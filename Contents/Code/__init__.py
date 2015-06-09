@@ -6,7 +6,7 @@
 import re, urllib
 
 # Set global variables
-TITLE = "CcloudTv"
+TITLE = "Ccloud Tv"
 PREFIX = "/video/ccloudtv"
 ART = "art-default.jpg"
 ICON = "icon-ccloudtv.png"
@@ -32,7 +32,7 @@ def Start():
 	VideoClipObject.art = R(ART)
 	
 	HTTP.ClearCache()
-	HTTP.CacheTime = CACHE_1HOUR
+	#HTTP.CacheTime = CACHE_1HOUR
 	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0'
 
 	
@@ -44,9 +44,17 @@ def MainMenu():
 	
 	webUrl = Prefs['web_url']
 	oc = ObjectContainer(title2=TITLE)
-	oc.add(InputDirectoryObject(key = Callback(Search,items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))	
-	oc.add(DirectoryObject(key = Callback(ShowMenu, title = 'Channels', webUrl = webUrl), title = 'Channels', thumb = R(ICON)))
-	oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks', items_dict=items_dict), title = 'My Channel Bookmarks', thumb = R(ICON_QUEUE)))
+	ChHelper = ' (Refresh List)'
+	ChHelper2 = ' (Initialize this Channel List once before Search, Search Queue and Bookmark menu are made available)'
+	if items_dict <> {}:
+		ChHelper = ''
+		ChHelper2 = ' - Listing retrieved'
+		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))
+		oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue', items_dict=items_dict), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH)))
+	oc.add(DirectoryObject(key = Callback(ShowMenu, title = 'Channels', webUrl = webUrl), title = 'Channels' + ChHelper, summary = 'Channels' + ChHelper2, thumb = R(ICON)))
+	if items_dict <> {}:
+		oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks', items_dict=items_dict), title = 'My Channel Bookmarks', thumb = R(ICON_QUEUE)))
+	
 	# preCache
 	if Prefs['use_precache']:
 		try:
@@ -81,6 +89,10 @@ def MainMenu():
 @route(PREFIX + "/showMenu")
 def ShowMenu(title, webUrl):
 	oc = ObjectContainer(title2=title)
+	abortBool = True
+	
+	if items_dict <> {}:
+		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))	
 	
 	if webUrl <> None and webUrl.startswith('http'):
 		BASE_URL = webUrl + DEV_URL
@@ -138,19 +150,21 @@ def ShowMenu(title, webUrl):
 				#Log("channelUrl--------------" + str(channelUrl))
 				title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
 				
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc), title = title, thumb = R(ICON_SERIES)))
-				
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
+			abortBool = False	
 		except:
 			BASE_URL = ""
+			abortBool = True
 	
-	oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))	
+	if items_dict <> {}:
+		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))
 	
-	if len(oc) == 1:
+	if abortBool:
 		return ObjectContainer(header=title, message='No Channels Available. Please check website URL !')
 	return oc
 	
 @route(PREFIX + '/channelpage')
-def ChannelPage(url, title, summary):
+def ChannelPage(url, title, summary, channelNum):
 
 	oc = ObjectContainer(title2=title)
 	
@@ -165,26 +179,28 @@ def ChannelPage(url, title, summary):
 	except:
 		url = ""
 	
-	if Check(title=title,url=url):
+	if Check(channelNum=channelNum,url=url):
 		oc.add(DirectoryObject(
-			key = Callback(RemoveBookmark, title = title, url = url),
+			key = Callback(RemoveBookmark, title = title, channelNum = channelNum, url = url),
 			title = "Remove Bookmark",
 			summary = 'Removes the current Channel from the Boomark queue',
 			thumb = R(ICON_QUEUE)
 		))
 	else:
 		oc.add(DirectoryObject(
-			key = Callback(AddBookmark, title = title, url = url),
+			key = Callback(AddBookmark, channelNum = channelNum, url = url),
 			title = "Bookmark Channel",
 			summary = 'Adds the current Channel to the Boomark queue',
 			thumb = R(ICON_QUEUE)
 		))
-
+	
+	if items_dict <> {}:
+		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))	
 	return oc
 	
 ####################################################################################################
 # Gets the redirecting url for .m3u8 streams
-@route(PREFIX + '/GetRedirector')
+@route(PREFIX + '/getredirector')
 def GetRedirector(url):
 
 	redirectUrl = url
@@ -283,11 +299,24 @@ def GetVideoURL(url, live):
 def Search(items_dict, query):
 
 	oc = ObjectContainer(title2='Search Results')
+	Dict['MyCustomSearch'+query] = query
+	Dict.Save()
 	
 	if items_dict <> None:
 		dict_len = len(items_dict)
 		if dict_len == 0:
 			return ObjectContainer(header='Search Results', message='No Channels loaded ! Initialize Channel list first.')
+		
+		start = 0
+		end = 0
+		if '~' in query:
+			split = query.split('~')
+			try:
+				start = int(split[0])
+				end = int(split[1])
+			except:
+				start = 0
+				end = 0
 		try:
 			for x in items_dict:
 				channelNum = items_dict[x]['channelNum']
@@ -296,8 +325,10 @@ def Search(items_dict, query):
 				title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
 				#Log("channelDesc--------- " + channelDesc)
 				
-				if query.lower() in channelDesc.lower():
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc), title = title, thumb = R(ICON_SERIES)))
+				if query.lower() in channelDesc.lower() or query == channelNum:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
+				elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
 		except:
 			return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
 	else:
@@ -306,6 +337,40 @@ def Search(items_dict, query):
 	if len(oc) == 0:
 		return ObjectContainer(header='Search Results', message='No Channels Available based on Search query')
 	return oc
+
+######################################################################################
+@route(PREFIX + "/searchQueueMenu", items_dict=dict)
+def SearchQueueMenu(title, items_dict):
+	oc2 = ObjectContainer(title2='Search Using Term')
+	#add a way to clear bookmarks list
+	oc2.add(DirectoryObject(
+		key = Callback(ClearSearches),
+		title = "Clear Search Queue",
+		thumb = R(ICON_SEARCH),
+		summary = "CAUTION! This will clear your entire search queue list!"
+		)
+	)
+	for each in Dict:
+		query = Dict[each]
+		#Log("each-----------" + each)
+		#Log("query-----------" + query)
+		if 'MyCustomSearch' in each and query != 'removed':
+			oc2.add(DirectoryObject(key = Callback(Search, query = query, items_dict=items_dict), title = query, thumb = R(ICON_SEARCH))
+		)
+
+	return oc2	
+	
+######################################################################################
+# Clears the Dict that stores the search list
+	
+@route(PREFIX + "/clearsearches")
+def ClearSearches():
+
+	for each in Dict:
+		if 'MyCustomSearch' in each:
+			Dict[each] = 'removed'
+	Dict.Save()
+	return ObjectContainer(header="Search Queue", message='Your Search Queue list will be cleared soon.')
 	
 ######################################################################################
 # Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
@@ -318,7 +383,7 @@ def Bookmarks(items_dict, title):
 	if items_dict <> None:
 		dict_len = len(items_dict)
 		if dict_len == 0:
-			return ObjectContainer(header='Search Results', message='No Channels loaded ! Channel list needs to be initialized first.')
+			return ObjectContainer(header='Bookmarks', message='No Channels loaded ! Channel list needs to be initialized first.')
 		try:
 			for each in Dict:
 				for x in items_dict:
@@ -326,14 +391,14 @@ def Bookmarks(items_dict, title):
 					channelDesc = items_dict[x]['channelDesc']
 					channelUrl = items_dict[x]['channelUrl']
 					title = 'Channel: ' + channelNum + ' (' + channelDesc + ')'
-					#Log("channelDesc--------- " + channelDesc)
+					#Log("channelDesc--------- " + str(channelDesc))
 					
-					if title == each:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc), title = title, thumb = R(ICON_SERIES)))
+					if channelNum == each and Dict[each] <> 'removed' and 'MyCustomSearch' <> each:
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
 		except:
-			return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
+			return ObjectContainer(header='Bookmarks', message='No Channels Available. Please check website URL !')
 	else:
-		return ObjectContainer(header='Search Results', message='Channels need to be loaded before search can be performed !')
+		return ObjectContainer(header='Bookmarks', message='Channels need to be loaded before search can be performed !')
 	
 	#add a way to clear bookmarks list
 	oc.add(DirectoryObject(
@@ -345,16 +410,16 @@ def Bookmarks(items_dict, title):
 	)
 	
 	if len(oc) == 1:
-		return ObjectContainer(header=title, message='No Bookmarked Videos Available')
+		return ObjectContainer(header='Bookmarks', message='No Bookmarked Videos Available')
 	return oc
 
 ######################################################################################
 # Checks a show to the bookmarks list using the title as a key for the url
 @route(PREFIX + "/checkbookmark")	
-def Check(title, url):
+def Check(channelNum, url):
 	bool = False
-	url = Dict[title]
-	#Log("url check-----------" + url)
+	url = Dict[channelNum]
+	#Log("url check-----------" + str(url))
 	if url != None and url <> 'removed':
 		bool = True
 	
@@ -364,34 +429,35 @@ def Check(title, url):
 # Adds a Channel to the bookmarks list using the title as a key for the url
 	
 @route(PREFIX + "/addbookmark")
-def AddBookmark(title, url):
+def AddBookmark(channelNum, url):
 	
-	Dict[title] = url
-	url = Dict[title]
-	#Log("url add-----------" + url)
+	Dict[channelNum] = url
+	url = Dict[channelNum]
+	#Log("url add-----------" + str(url))
 	Dict.Save()
-	return ObjectContainer(header=title, message='This Channel has been added to your bookmarks.')
+	return ObjectContainer(header= 'Channel: ' + channelNum, message='This Channel has been added to your bookmarks.')
 ######################################################################################
 # Removes a Channel to the bookmarks list using the title as a key for the url
 	
 @route(PREFIX + "/removebookmark")
-def RemoveBookmark(title, url):
+def RemoveBookmark(title, channelNum, url):
 	
-	url = Dict[title]
-	#Log("url remove-----------" + url)
+	#url = Dict[title]
+	#Log("url remove-----------" + str(url))
 	Dict[title] = 'removed'
+	Dict[channelNum] = 'removed'
 	Dict.Save()
-	return ObjectContainer(header=title, message='This Channel has been removed from your bookmarks.')	
+	return ObjectContainer(header='Channel: '+channelNum, message='This Channel has been removed from your bookmarks.')	
 ######################################################################################
 # Clears the Dict that stores the bookmarks list
 	
 @route(PREFIX + "/clearbookmarks")
 def ClearBookmarks():
 
-	for title in Dict:
-		url = Dict[title]
+	for channelNum in Dict:
+		url = Dict[channelNum]
 		if url <> 'removed':
-			Dict[title] = 'removed'
-			#Log("url remove-----------" + url)
+			Dict[channelNum] = 'removed'
+			#Log("url remove-----------" + str(url))
 	Dict.Save()
 	return ObjectContainer(header="My Bookmarks", message='Your bookmark list will be cleared soon.')
