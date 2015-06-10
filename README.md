@@ -1,8 +1,8 @@
 CcloudTv.bundle
 ===================
 
-Plex Media Server plug-in designed for CcloudTv
-
+Plex Media Server plug-in designed for cCloud TV BETA | Popcorntime for LIVE TV
+[Plex Forum Support Thread](https://forums.plex.tv/index.php/topic/166602-rel-ccloudtv-channel-iptv/)
 
 System Requirements
 ===================
@@ -37,7 +37,7 @@ How To Install
 How To Use
 ==============
 
-- Set the CcloudTv web url before usage without trailing slash under Preferences
+- Set the cCloud Tv web url before usage without trailing slash under Preferences
 
 Known Issues
 ==============
@@ -47,5 +47,5 @@ Known Issues
 Acknowledgements
 ==============
 
-- Credits to [CcloudTv - cCloud-Popcorntime for LIVE TV an open source project)] (https://www.google.com/?gws_rd=ssl#q=Ccloud+tv)
+- Credits to [cCloud TV BETA | Popcorntime for LIVE TV an open source project)] (https://www.google.com/?gws_rd=ssl#q=Ccloud+tv)
 - Credits to [Cigaras, Valdas Vaitiekaitis] (https://forums.plex.tv/index.php/topic/83083-iptvbundle-plugin-that-plays-iptv-streams-from-a-m3u-playlist/): IPTV (This plugins uses some parts)

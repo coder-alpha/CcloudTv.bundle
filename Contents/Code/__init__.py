@@ -1,23 +1,27 @@
 ######################################################################################
 #
-#	CcloudTv - v0.01
+#	CcloudTv - v0.02
 #
 ######################################################################################
 import re, urllib
 
 # Set global variables
-TITLE = "Ccloud Tv"
+TITLE = "cCloud TV BETA | Popcorntime for LIVE TV"
 PREFIX = "/video/ccloudtv"
 ART = "art-default.jpg"
 ICON = "icon-ccloudtv.png"
 ICON_LIST = "icon-list.png"
 ICON_SEARCH = "icon-search.png"
 ICON_SERIES = "icon-series.png"
+ICON_SERIES_UNAV = "icon-series-unav.png"
+ICON_AUDIO = "icon-audio.png"
 ICON_QUEUE = "icon-queue.png"
+ICON_PAGE = "icon-page.png"
+ICON_PREFS = "icon-prefs.png"
 
 BASE_URL = ""
 DEV_URL = "/ch/l/tv"
-items_dict = {} # using dictionary for search
+items_dict = {} # using dictionary for storing channel listing - but its not behaving as expected
 DISABLED_NAMES = ['shspiderman']
 
 ######################################################################################
@@ -46,13 +50,14 @@ def MainMenu():
 	oc = ObjectContainer(title2=TITLE)
 	ChHelper = ' (Refresh List)'
 	ChHelper2 = ' (Initialize this Channel List once before Search, Search Queue and Bookmark menu are made available)'
+
 	if items_dict <> {}:
 		ChHelper = ''
 		ChHelper2 = ' - Listing retrieved'
-		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))
-		oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue', items_dict=items_dict), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH)))
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = 'Channels', webUrl = webUrl), title = 'Channels' + ChHelper, summary = 'Channels' + ChHelper2, thumb = R(ICON)))
 	if items_dict <> {}:
+		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+		oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue', items_dict=items_dict), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH)))
 		oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks', items_dict=items_dict), title = 'My Channel Bookmarks', thumb = R(ICON_QUEUE)))
 	
 	# preCache
@@ -83,7 +88,8 @@ def MainMenu():
 					page_data_r = ''
 		except:
 			page_data_r = ''
-
+			
+	oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
 	return oc
 
 @route(PREFIX + "/showMenu")
@@ -92,7 +98,7 @@ def ShowMenu(title, webUrl):
 	abortBool = True
 	
 	if items_dict <> {}:
-		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))	
+		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))	
 	
 	if webUrl <> None and webUrl.startswith('http'):
 		BASE_URL = webUrl + DEV_URL
@@ -150,17 +156,18 @@ def ShowMenu(title, webUrl):
 				#Log("channelUrl--------------" + str(channelUrl))
 				title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
 				
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
+				
 			abortBool = False	
 		except:
 			BASE_URL = ""
 			abortBool = True
 	
 	if items_dict <> {}:
-		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))
+		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 	
 	if abortBool:
-		return ObjectContainer(header=title, message='No Channels Available. Please check website URL !')
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
 	return oc
 	
 @route(PREFIX + '/channelpage')
@@ -171,10 +178,11 @@ def ChannelPage(url, title, summary, channelNum):
 	try:
 		#Log("----------- url ----------------")
 		#Log(url)
+		furl = GetRedirector(url)
 		oc.add(CreateVideoClipObject(
-			url = GetRedirector(url),
+			url = furl,
 			title = title,
-			thumb = R(ICON_SERIES),
+			thumb = GetChannelThumb(furl),
 			summary = summary))
 	except:
 		url = ""
@@ -195,8 +203,26 @@ def ChannelPage(url, title, summary, channelNum):
 		))
 	
 	if items_dict <> {}:
-		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), title='Search', summary='Search Channel', prompt='Search for...'))	
+		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))	
 	return oc
+
+####################################################################################################
+# Gets the redirecting url for .m3u8 streams
+@route(PREFIX + '/getchannelthumb')
+def GetChannelThumb(url):
+
+	thumb = R(ICON_SERIES_UNAV)
+	try:
+		if '.m3u8' in url:
+			page = HTTP.Request(url).content
+			if 'html' not in page and 'div' not in page and '#EXTM3U' in page:
+				thumb = R(ICON_SERIES)
+		elif '.aac' in url or '.mp3' in url:
+			thumb = R(ICON_AUDIO)
+	except:
+		thumb = R(ICON_SERIES_UNAV)
+
+	return thumb
 	
 ####################################################################################################
 # Gets the redirecting url for .m3u8 streams
@@ -205,7 +231,7 @@ def GetRedirector(url):
 
 	redirectUrl = url
 	try:
-		if '.m3u8' not in redirectUrl:
+		if '.m3u8' not in url and '.mp3' not in url and '.aac' not in url:
 			page = urllib.urlopen(url)
 			redirectUrl = page.geturl()
 			#Log("Redirecting url ----- : " + redirectUrl)
@@ -234,37 +260,68 @@ def GetRedirector(url):
 #
 ####################################################################################################
 @route(PREFIX + '/createvideoclipobject')
-def CreateVideoClipObject(url, title, thumb, summary, container = False):
+def CreateVideoClipObject(url, title, thumb, summary, inc_container = False):
 		
 	#Log("CreateVideoClipObject--------------" + str(url))
-	vco = VideoClipObject(
-		key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, container = True),
-		#rating_key = url,
-		url = url,
-		title = title,
-		summary = summary,
-		thumb = thumb,
-		items = [
-			MediaObject(
-				#container = Container.MP4,	 # MP4, MKV, MOV, AVI
-				#video_codec = VideoCodec.H264, # H264
-				#audio_codec = AudioCodec.AAC,  # ACC, MP3
-				#audio_channels = 2,			# 2, 6
-				parts = [
-					PartObject(
-						key = GetVideoURL(url = url, live = True)
-					)
-				],
-				optimized_for_streaming = True
-			)
-		]
-	)
+	vco = ''
+	if '.mp3' in url or '.aac' in url:
+		container = Container.MP4
+		audio_codec = AudioCodec.AAC
+		
+		if '.mp3' in url:
+			container = 'mp3'
+			audio_codec = AudioCodec.MP3
+		elif '.aac' in url:
+			container = 'aac'
+			audio_codec = AudioCodec.AAC
+			
+		vco = TrackObject(
+			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, inc_container = True),
+			rating_key = url,
+			title = title,
+			thumb = thumb,
+			summary = summary,
+			items = [
+				MediaObject(
+					parts = [
+						PartObject(key=url)
+					],
+					container = container,
+					audio_codec = audio_codec,
+					audio_channels = 2
+				)
+			]
+		)
+	else:	
+		vco = VideoClipObject(
+			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, inc_container = True),
+			#rating_key = url,
+			url = url,
+			title = title,
+			summary = summary,
+			thumb = thumb,
+			items = [
+				MediaObject(
+					#container = Container.MP4,	 # MP4, MKV, MOV, AVI
+					#video_codec = VideoCodec.H264, # H264
+					#audio_codec = AudioCodec.AAC,  # ACC, MP3
+					#audio_channels = 2,			# 2, 6
+					#container = container,
+					#audio_codec = audio_codec,
+					parts = [
+						PartObject(
+							key = GetVideoURL(url = url, live = True)
+						)
+					],
+					optimized_for_streaming = True
+				)
+			]
+		)
 
-	if container:
+	if inc_container:
 		return ObjectContainer(objects = [vco])
 	else:
 		return vco
-	return vc
 
 ####################################################################################################
 def GetVideoURL(url, live):
@@ -326,9 +383,9 @@ def Search(items_dict, query):
 				#Log("channelDesc--------- " + channelDesc)
 				
 				if query.lower() in channelDesc.lower() or query == channelNum:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
 				elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
 		except:
 			return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
 	else:
@@ -355,8 +412,11 @@ def SearchQueueMenu(title, items_dict):
 		#Log("each-----------" + each)
 		#Log("query-----------" + query)
 		if 'MyCustomSearch' in each and query != 'removed':
-			oc2.add(DirectoryObject(key = Callback(Search, query = query, items_dict=items_dict), title = query, thumb = R(ICON_SEARCH))
-		)
+			if '~' in query:
+				oc2.add(DirectoryObject(key = Callback(Search, query = query, items_dict=items_dict), title = query, thumb = R(ICON_PAGE)))
+			else:
+				oc2.add(DirectoryObject(key = Callback(Search, query = query, items_dict=items_dict), title = query, thumb = R(ICON_SEARCH)))
+		
 
 	return oc2	
 	
@@ -394,7 +454,7 @@ def Bookmarks(items_dict, title):
 					#Log("channelDesc--------- " + str(channelDesc))
 					
 					if channelNum == each and Dict[each] <> 'removed' and 'MyCustomSearch' <> each:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
 		except:
 			return ObjectContainer(header='Bookmarks', message='No Channels Available. Please check website URL !')
 	else:
