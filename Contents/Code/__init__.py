@@ -1,9 +1,10 @@
 ######################################################################################
 #
-#	CcloudTv - v0.02
+#	CcloudTv - v0.03
 #
 ######################################################################################
 import re, urllib
+import datetime as DT
 
 # Set global variables
 TITLE = "cCloud TV BETA | Popcorntime for LIVE TV"
@@ -24,6 +25,8 @@ DEV_URL = "/ch/l/tv"
 items_dict = {} # using dictionary for storing channel listing - but its not behaving as expected
 DISABLED_NAMES = ['shspiderman']
 
+LIST_VIEW_CLIENTS = ['Android','iOS']
+
 ######################################################################################
 
 def Start():
@@ -38,6 +41,7 @@ def Start():
 	HTTP.ClearCache()
 	#HTTP.CacheTime = CACHE_1HOUR
 	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0'
+	
 
 	
 ######################################################################################
@@ -98,7 +102,10 @@ def ShowMenu(title, webUrl):
 	abortBool = True
 	
 	if items_dict <> {}:
-		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))	
+		if Client.Platform not in LIST_VIEW_CLIENTS:
+			oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+		else:
+			oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
 	
 	if webUrl <> None and webUrl.startswith('http'):
 		BASE_URL = webUrl + DEV_URL
@@ -135,10 +142,13 @@ def ShowMenu(title, webUrl):
 			channels = page_elems.xpath(".//table[@class='list']//tr")
 			count = 0
 			
+			today = DT.date.today()
+			week_ago = today - DT.timedelta(days=7)
+			
 			for eachCh in channels:
 				channelNum = eachCh.xpath(".//td[@class='text-center']//a//text()")[0]
 				channelUrl = eachCh.xpath(".//td[@class='text-left']//a//@href")[0]
-
+				channelDesc = ' '
 				try:
 					channelId0 = channelUrl.split('/')
 					channelId = channelId0[len(channelId0)-1].replace('tv','')
@@ -150,13 +160,21 @@ def ShowMenu(title, webUrl):
 				except:
 					channelDesc = eachCh.xpath(".//td[@class='text-left']//a//text()")[0]
 				
-				items_dict[count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl}
+				# get update date and used DirectoryObject tagline for sort feature
+				dateStr = getDate(channelDesc,week_ago)
+				
+				items_dict[count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
 				count = count + 1
 				
 				#Log("channelUrl--------------" + str(channelUrl))
 				title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
 				
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
+				#Log("title----------" + title)
+				
+				if Client.Platform not in LIST_VIEW_CLIENTS:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+				else:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = None))
 				
 			abortBool = False	
 		except:
@@ -164,12 +182,51 @@ def ShowMenu(title, webUrl):
 			abortBool = True
 	
 	if items_dict <> {}:
-		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+		if Client.Platform not in LIST_VIEW_CLIENTS:
+			oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+		else:
+			oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
 	
 	if abortBool:
 		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	if Prefs['use_datesort']:
+		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
 	return oc
 	
+@route(PREFIX + '/getdate')
+def getDate(channelDesc,week_ago):
+	dateStr = 'Undefined'
+	
+	# tricky keep in seperate try
+	try:
+		dateStr = str(week_ago.month) + '/' + str(week_ago.day)
+		channelUpDate = channelDesc.replace('Updated:','')
+		channelUpDate = channelUpDate.replace('24/7','')
+		if '/' in channelUpDate and '-' in channelUpDate:
+			dateStr = channelUpDate.split('-')[0]
+		elif '/' in channelUpDate and ':' in channelUpDate:
+			dateStr = channelUpDate.split(':')[0]
+	except:
+		dateStr = str(week_ago.month) + '/' + str(week_ago.day)
+		
+	try:
+		if ':' in dateStr:
+			dateStr = dateStr.split(':')[0]
+	except:
+		dateStr = str(week_ago.month) + '/' + str(week_ago.day)
+		
+	try:
+		dateStrS = dateStr.split('/')
+		dateStr = str("%02d" % int(dateStrS[0])) + '/' + str("%02d" % int(dateStrS[1]))
+	except:
+		dateStr = 'Undefined'
+		
+	#Log("dateStr----------" + dateStr)
+	return dateStr
+
+
+
 @route(PREFIX + '/channelpage')
 def ChannelPage(url, title, summary, channelNum):
 
@@ -217,6 +274,8 @@ def GetChannelThumb(url):
 			page = HTTP.Request(url).content
 			if 'html' not in page and 'div' not in page and '#EXTM3U' in page:
 				thumb = R(ICON_SERIES)
+		elif '.m3u' in url:
+			thumb = R(ICON_SERIES)
 		elif '.aac' in url or '.mp3' in url:
 			thumb = R(ICON_AUDIO)
 	except:
@@ -231,13 +290,13 @@ def GetRedirector(url):
 
 	redirectUrl = url
 	try:
-		if '.m3u8' not in url and '.mp3' not in url and '.aac' not in url:
+		if '.m3u8' not in url and '.mp3' not in url and '.aac' not in url and '.m3u' not in url:
 			page = urllib.urlopen(url)
 			redirectUrl = page.geturl()
-			#Log("Redirecting url ----- : " + redirectUrl)
 	except:
 		redirectUrl = url
-
+			
+	Log("Redirecting url ----- : " + redirectUrl)
 	return redirectUrl
 #
 # IPTV (Author: Cigaras)
@@ -328,7 +387,10 @@ def GetVideoURL(url, live):
 
 	#url = 'http://wpc.c1a9.edgecastcdn.net/hls-live/20C1A9/cnn/ls_satlink/b_828.m3u8?Vd?u#bt!25'
 	
-	if url.startswith('rtmp') and Prefs['rtmp']:
+	if '.m3u' in url and '.m3u8' not in url:
+		#return HTTPLiveStreamURL(url=url) # does not work - retrieves only single segment
+		return PlayVideoLive(url=url)
+	elif url.startswith('rtmp') and Prefs['rtmp']:
 		Log.Debug('*' * 80)
 		Log.Debug('* url before processing: %s' % url)
 		#if url.find(' ') > -1:
@@ -350,7 +412,12 @@ def GetVideoURL(url, live):
 		return WindowsMediaVideoURL(url = url)
 	else:
 		return HTTPLiveStreamURL(url = url)
-		
+
+####################################################################################################
+@indirect
+def PlayVideoLive(url):
+
+	return HTTPLiveStreamURL(url=url)
 ####################################################################################################
 @route(PREFIX + "/search", items_dict=dict)
 def Search(items_dict, query):
@@ -379,13 +446,14 @@ def Search(items_dict, query):
 				channelNum = items_dict[x]['channelNum']
 				channelDesc = items_dict[x]['channelDesc']
 				channelUrl = items_dict[x]['channelUrl']
+				dateStr = items_dict[x]['channelDate']
 				title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
 				#Log("channelDesc--------- " + channelDesc)
 				
 				if query.lower() in channelDesc.lower() or query == channelNum:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
 				elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
 		except:
 			return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
 	else:
@@ -393,6 +461,11 @@ def Search(items_dict, query):
 	
 	if len(oc) == 0:
 		return ObjectContainer(header='Search Results', message='No Channels Available based on Search query')
+		
+	if Prefs['use_datesort']:
+		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
+	else:	
+		oc.objects.sort(key=lambda obj: obj.title)
 	return oc
 
 ######################################################################################
@@ -450,11 +523,12 @@ def Bookmarks(items_dict, title):
 					channelNum = items_dict[x]['channelNum']
 					channelDesc = items_dict[x]['channelDesc']
 					channelUrl = items_dict[x]['channelUrl']
+					dateStr = items_dict[x]['channelDate']
 					title = 'Channel: ' + channelNum + ' (' + channelDesc + ')'
 					#Log("channelDesc--------- " + str(channelDesc))
 					
 					if channelNum == each and Dict[each] <> 'removed' and 'MyCustomSearch' <> each:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
 		except:
 			return ObjectContainer(header='Bookmarks', message='No Channels Available. Please check website URL !')
 	else:
@@ -471,6 +545,11 @@ def Bookmarks(items_dict, title):
 	
 	if len(oc) == 1:
 		return ObjectContainer(header='Bookmarks', message='No Bookmarked Videos Available')
+	
+	if Prefs['use_datesort']:
+		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
+	else:	
+		oc.objects.sort(key=lambda obj: obj.title)
 	return oc
 
 ######################################################################################
