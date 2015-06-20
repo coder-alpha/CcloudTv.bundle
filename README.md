@@ -44,6 +44,7 @@ Known Issues
 ==============
 
 - Some channels will not play, if so check in web-browser before reporting with an issue.
+[Plex Forum Support Thread](https://forums.plex.tv/index.php/topic/166602-rel-ccloudtv-channel-iptv/)
 
 Acknowledgements
 ==============

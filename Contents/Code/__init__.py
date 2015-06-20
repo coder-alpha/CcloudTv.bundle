@@ -593,9 +593,9 @@ def Search(query):
 			#Log("channelDesc--------- " + channelDesc)
 			
 			if query.lower() in channelDesc.lower() or query == channelNum:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
 			elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
 	except:
 		return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
 	
