@@ -1,14 +1,14 @@
 ######################################################################################
 #
-#	CcloudTv - v0.03
+#	CcloudTv
 #
 ######################################################################################
-import re, urllib
+import re, urllib, common, updater
 import datetime as DT
 
 # Set global variables
-TITLE = "cCloud TV BETA | Popcorntime for LIVE TV"
-PREFIX = "/video/ccloudtv"
+TITLE = common.TITLE
+PREFIX = common.PREFIX
 ART = "art-default.jpg"
 ICON = "icon-ccloudtv.png"
 ICON_LIST = "icon-list.png"
@@ -19,10 +19,13 @@ ICON_AUDIO = "icon-audio.png"
 ICON_QUEUE = "icon-queue.png"
 ICON_PAGE = "icon-page.png"
 ICON_PREFS = "icon-prefs.png"
+ICON_UPDATE = "icon-update.png"
 
 BASE_URL = ""
 DEV_URL = "/ch/l/tv"
-items_dict = {} # using dictionary for storing channel listing - but its not behaving as expected
+
+# using dictionary for temp. storing channel listing
+Dict['items_dict'] = {}
 DISABLED_NAMES = ['shspiderman']
 
 LIST_VIEW_CLIENTS = ['Android','iOS']
@@ -50,23 +53,19 @@ def Start():
 @handler(PREFIX, TITLE, art=ART, thumb=ICON)
 def MainMenu():
 	
-	webUrl = Prefs['web_url']
 	oc = ObjectContainer(title2=TITLE)
 	ChHelper = ' (Refresh List)'
 	ChHelper2 = ' (Initialize this Channel List once before Search, Search Queue and Bookmark menu are made available)'
 
-	if items_dict <> {}:
+	if Dict['items_dict'] <> {}:
 		ChHelper = ''
 		ChHelper2 = ' - Listing retrieved'
-	oc.add(DirectoryObject(key = Callback(ShowMenu, title = 'Channels', webUrl = webUrl), title = 'Channels' + ChHelper, summary = 'Channels' + ChHelper2, thumb = R(ICON)))
-	if items_dict <> {}:
-		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
-		oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue', items_dict=items_dict), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH)))
-		oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks', items_dict=items_dict), title = 'My Channel Bookmarks', thumb = R(ICON_QUEUE)))
+	oc.add(DirectoryObject(key = Callback(ShowMenu, title = 'Channels'), title = 'Channels' + ChHelper, summary = 'Channels' + ChHelper2, thumb = R(ICON)))
 	
 	# preCache
 	if Prefs['use_precache']:
 		try:
+			webUrl = Prefs['web_url']
 			if webUrl <> None and webUrl.startswith('http'):
 				BASE_URL = webUrl + DEV_URL
 				try:
@@ -93,21 +92,39 @@ def MainMenu():
 		except:
 			page_data_r = ''
 			
+	oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
 	oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
 	return oc
 
 @route(PREFIX + "/showMenu")
-def ShowMenu(title, webUrl):
+def ShowMenu(title):
+
 	oc = ObjectContainer(title2=title)
-	abortBool = True
 	
-	if items_dict <> {}:
-		if Client.Platform not in LIST_VIEW_CLIENTS:
-			oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
-		else:
-			oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+
+	oc.add(DirectoryObject(key = Callback(DisplayList, title='List View'), title = 'List View', thumb = R(ICON_PAGE)))
+	oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=0), title = 'Page View', thumb = R(ICON_PAGE)))
+	oc.add(DirectoryObject(key = Callback(DisplayPageList, title='Page List'), title = 'Page List', thumb = R(ICON_PAGE)))
+	oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH)))
+	oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks'), title = 'My Channel Bookmarks', thumb = R(ICON_QUEUE)))
+	oc.add(DirectoryObject(key = Callback(Pins, title='My Channel Pins'), title = 'My Channel Pins', thumb = R(ICON_QUEUE)))
+	oc.add(DirectoryObject(key = Callback(RefreshListing, doRefresh=True), title = 'Refresh Channels', thumb = R(ICON)))
+	
+	return oc
+	
+@route(PREFIX + "/refreshlisting")
+def RefreshListing(doRefresh):
+
+	abortBool = True
+	webUrl = Prefs['web_url']
 	
 	if webUrl <> None and webUrl.startswith('http'):
+		if Dict['items_dict'] <> {} and not doRefresh:
+			return False
 		BASE_URL = webUrl + DEV_URL
 		try:
 			page_data = HTTP.Request(BASE_URL).content
@@ -154,44 +171,152 @@ def ShowMenu(title, webUrl):
 					channelId = channelId0[len(channelId0)-1].replace('tv','')
 					srcStr = 'documentgetElementById'+channelId+'textContent'
 					#Log("srcStr----------" + srcStr)
-					
+				except:
+					channelDesc = ' '
+				try:
 					channelDesc = re.findall(srcStr+'(.*?);', page_data, re.S)[0]
 					#Log("channelDesc----------" + channelDesc)
 				except:
-					channelDesc = eachCh.xpath(".//td[@class='text-left']//a//text()")[0]
+					channelDesc = ' '
 				
+				if channelDesc == None or channelDesc == 'Loading...' or channelDesc == ' ' or channelDesc == '':
+					channelDesc = unicode('Channel: ' + channelNum)
+					
+				#Log("channelDesc----------" + channelDesc)
 				# get update date and used DirectoryObject tagline for sort feature
 				dateStr = getDate(channelDesc,week_ago)
 				
-				items_dict[count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
+				Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
 				count = count + 1
 				
-				#Log("channelUrl--------------" + str(channelUrl))
-				title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
-				
-				#Log("title----------" + title)
-				
-				if Client.Platform not in LIST_VIEW_CLIENTS:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
-				else:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = None))
-				
-			abortBool = False	
+			abortBool = False
+			if doRefresh:
+				return ObjectContainer(header='Refresh Successful', message='New Channel listing retrieved !')
 		except:
 			BASE_URL = ""
 			abortBool = True
+
+	if doRefresh:
+		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !')		
+	return abortBool
 	
-	if items_dict <> {}:
-		if Client.Platform not in LIST_VIEW_CLIENTS:
-			oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
-		else:
-			oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
+@route(PREFIX + "/displaylist")
+def DisplayList(title):
+	oc = ObjectContainer(title2=title)
+
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	if Client.Platform not in LIST_VIEW_CLIENTS:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+	else:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
+	
+	try:
+		for count in range(0,len(Dict['items_dict'])):
+			
+			#items_dict[count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
+			
+			channelNum = Dict['items_dict'][count]['channelNum']
+			channelDesc = Dict['items_dict'][count]['channelDesc']
+			channelUrl = Dict['items_dict'][count]['channelUrl']
+			dateStr = Dict['items_dict'][count]['channelDate']
+			
+			#Log("channelUrl--------------" + str(channelUrl))
+			title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
+			
+			#Log("title----------" + title)
+			
+			if Client.Platform not in LIST_VIEW_CLIENTS:
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+			else:
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = None))
+			
+		abortBool = False	
+	except:
+		abortBool = True
 	
 	if abortBool:
 		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
 		
 	if Prefs['use_datesort']:
 		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
+	return oc
+
+@route(PREFIX + "/displaypage")
+def DisplayPage(title, iRange):
+	oc = ObjectContainer(title2=title)
+	
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	if Client.Platform not in LIST_VIEW_CLIENTS:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+	else:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
+	
+	try:
+		mCount=0
+		for count in range(int(iRange),len(Dict['items_dict'])):
+			
+			#Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
+			
+			channelNum = Dict['items_dict'][count]['channelNum']
+			channelDesc = Dict['items_dict'][count]['channelDesc']
+			channelUrl = Dict['items_dict'][count]['channelUrl']
+			dateStr = Dict['items_dict'][count]['channelDate']
+			
+			#Log("channelUrl--------------" + str(channelUrl))
+			title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
+			
+			#Log("title----------" + title)
+			
+			if Client.Platform not in LIST_VIEW_CLIENTS:
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+			else:
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = None))
+			
+			if mCount == 9:
+				oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=int(iRange)+10), title = 'More >>', thumb = R(ICON_PAGE)))
+				break
+			mCount = mCount+1
+	except:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	return oc
+	
+@route(PREFIX + "/displaypagelist")
+def DisplayPageList(title):
+	oc = ObjectContainer(title2=title)
+	
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	if Client.Platform not in LIST_VIEW_CLIENTS:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+	else:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
+	
+	try:
+		mCount=0
+		sCh = '0'
+		eCh = '9'
+		for count in range(0,len(Dict['items_dict'])):
+			mCount = mCount+1
+			
+			channelNum = Dict['items_dict'][count]['channelNum']
+			if mCount == 1:
+				sCh = channelNum
+			
+			if mCount == 10 or count == len(Dict['items_dict'])-1:
+				oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=int(sCh)), title = 'Channels: ' + str(sCh) + ' - ' + str(channelNum), thumb = R(ICON_PAGE)))
+				mCount = 0
+	except:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+
 	return oc
 	
 @route(PREFIX + '/getdate')
@@ -228,7 +353,7 @@ def getDate(channelDesc,week_ago):
 
 
 @route(PREFIX + '/channelpage')
-def ChannelPage(url, title, summary, channelNum):
+def ChannelPage(url, title, channelDesc, channelNum):
 
 	oc = ObjectContainer(title2=title)
 	
@@ -240,11 +365,11 @@ def ChannelPage(url, title, summary, channelNum):
 			url = furl,
 			title = title,
 			thumb = GetChannelThumb(furl),
-			summary = summary))
+			summary = channelDesc))
 	except:
 		url = ""
 	
-	if Check(channelNum=channelNum,url=url):
+	if CheckBookmark(channelNum=channelNum,url=url):
 		oc.add(DirectoryObject(
 			key = Callback(RemoveBookmark, title = title, channelNum = channelNum, url = url),
 			title = "Remove Bookmark",
@@ -258,9 +383,24 @@ def ChannelPage(url, title, summary, channelNum):
 			summary = 'Adds the current Channel to the Boomark queue',
 			thumb = R(ICON_QUEUE)
 		))
+	if CheckPin(url=url):
+		oc.add(DirectoryObject(
+			key = Callback(RemovePin, url = url),
+			title = "Remove Pin",
+			summary = 'Removes the current Channel from the Pin list',
+			thumb = R(ICON_QUEUE)
+		))
+	else:
+		oc.add(DirectoryObject(
+			key = Callback(AddPin, channelNum = channelNum, url = url, channelDesc = channelDesc),
+			title = "Pin Channel",
+			summary = 'Adds the current Channel to the Pin list',
+			thumb = R(ICON_QUEUE)
+		))
 	
-	if items_dict <> {}:
-		oc.add(InputDirectoryObject(key = Callback(Search, items_dict=items_dict), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))	
+	abortBool = RefreshListing(False)
+	if not abortBool:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))	
 	return oc
 
 ####################################################################################################
@@ -296,7 +436,7 @@ def GetRedirector(url):
 	except:
 		redirectUrl = url
 			
-	Log("Redirecting url ----- : " + redirectUrl)
+	#Log("Redirecting url ----- : " + redirectUrl)
 	return redirectUrl
 #
 # IPTV (Author: Cigaras)
@@ -419,45 +559,45 @@ def PlayVideoLive(url):
 
 	return HTTPLiveStreamURL(url=url)
 ####################################################################################################
-@route(PREFIX + "/search", items_dict=dict)
-def Search(items_dict, query):
+@route(PREFIX + "/search")
+def Search(query):
 
 	oc = ObjectContainer(title2='Search Results')
 	Dict['MyCustomSearch'+query] = query
-	Dict.Save()
 	
-	if items_dict <> None:
-		dict_len = len(items_dict)
-		if dict_len == 0:
-			return ObjectContainer(header='Search Results', message='No Channels loaded ! Initialize Channel list first.')
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
 		
-		start = 0
-		end = 0
-		if '~' in query:
-			split = query.split('~')
-			try:
-				start = int(split[0])
-				end = int(split[1])
-			except:
-				start = 0
-				end = 0
+	dict_len = len(Dict['items_dict'])
+	if dict_len == 0:
+		return ObjectContainer(header='Search Results', message='No Channels loaded ! Initialize Channel list first.')
+	
+	start = 0
+	end = 0
+	if '~' in query:
+		split = query.split('~')
 		try:
-			for x in items_dict:
-				channelNum = items_dict[x]['channelNum']
-				channelDesc = items_dict[x]['channelDesc']
-				channelUrl = items_dict[x]['channelUrl']
-				dateStr = items_dict[x]['channelDate']
-				title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
-				#Log("channelDesc--------- " + channelDesc)
-				
-				if query.lower() in channelDesc.lower() or query == channelNum:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
-				elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+			start = int(split[0])
+			end = int(split[1])
 		except:
-			return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
-	else:
-		return ObjectContainer(header='Search Results', message='Channels need to be loaded before search can be performed !')
+			start = 0
+			end = 0
+	try:
+		for x in Dict['items_dict']:
+			channelNum = Dict['items_dict'][x]['channelNum']
+			channelDesc = Dict['items_dict'][x]['channelDesc']
+			channelUrl = Dict['items_dict'][x]['channelUrl']
+			dateStr = Dict['items_dict'][x]['channelDate']
+			title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
+			#Log("channelDesc--------- " + channelDesc)
+			
+			if query.lower() in channelDesc.lower() or query == channelNum:
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+			elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+	except:
+		return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
 	
 	if len(oc) == 0:
 		return ObjectContainer(header='Search Results', message='No Channels Available based on Search query')
@@ -466,11 +606,16 @@ def Search(items_dict, query):
 		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
 	else:	
 		oc.objects.sort(key=lambda obj: obj.title)
+		
+	Dict['items_dict'] = {}
+	Dict.Save()
+	abortBool = RefreshListing(False)
+	
 	return oc
 
 ######################################################################################
-@route(PREFIX + "/searchQueueMenu", items_dict=dict)
-def SearchQueueMenu(title, items_dict):
+@route(PREFIX + "/searchQueueMenu")
+def SearchQueueMenu(title):
 	oc2 = ObjectContainer(title2='Search Using Term')
 	#add a way to clear bookmarks list
 	oc2.add(DirectoryObject(
@@ -486,9 +631,9 @@ def SearchQueueMenu(title, items_dict):
 		#Log("query-----------" + query)
 		if 'MyCustomSearch' in each and query != 'removed':
 			if '~' in query:
-				oc2.add(DirectoryObject(key = Callback(Search, query = query, items_dict=items_dict), title = query, thumb = R(ICON_PAGE)))
+				oc2.add(DirectoryObject(key = Callback(Search, query = query), title = query, thumb = R(ICON_PAGE)))
 			else:
-				oc2.add(DirectoryObject(key = Callback(Search, query = query, items_dict=items_dict), title = query, thumb = R(ICON_SEARCH)))
+				oc2.add(DirectoryObject(key = Callback(Search, query = query), title = query, thumb = R(ICON_SEARCH)))
 		
 
 	return oc2	
@@ -499,40 +644,43 @@ def SearchQueueMenu(title, items_dict):
 @route(PREFIX + "/clearsearches")
 def ClearSearches():
 
+	Dict['items_dict'] = {}
 	for each in Dict:
 		if 'MyCustomSearch' in each:
 			Dict[each] = 'removed'
 	Dict.Save()
+	abortBool = RefreshListing(False)
 	return ObjectContainer(header="Search Queue", message='Your Search Queue list will be cleared soon.')
 	
 ######################################################################################
 # Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
 
-@route(PREFIX + "/bookmarks", items_dict=dict)	
-def Bookmarks(items_dict, title):
+@route(PREFIX + "/bookmarks")	
+def Bookmarks(title):
 
 	oc = ObjectContainer(title1 = title)
 	
-	if items_dict <> None:
-		dict_len = len(items_dict)
-		if dict_len == 0:
-			return ObjectContainer(header='Bookmarks', message='No Channels loaded ! Channel list needs to be initialized first.')
-		try:
-			for each in Dict:
-				for x in items_dict:
-					channelNum = items_dict[x]['channelNum']
-					channelDesc = items_dict[x]['channelDesc']
-					channelUrl = items_dict[x]['channelUrl']
-					dateStr = items_dict[x]['channelDate']
-					title = 'Channel: ' + channelNum + ' (' + channelDesc + ')'
-					#Log("channelDesc--------- " + str(channelDesc))
-					
-					if channelNum == each and Dict[each] <> 'removed' and 'MyCustomSearch' <> each:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, summary = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
-		except:
-			return ObjectContainer(header='Bookmarks', message='No Channels Available. Please check website URL !')
-	else:
-		return ObjectContainer(header='Bookmarks', message='Channels need to be loaded before search can be performed !')
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	dict_len = len(Dict['items_dict'])
+	if dict_len == 0:
+		return ObjectContainer(header='Bookmarks', message='No Channels loaded ! Channel list needs to be initialized first.')
+	try:
+		for each in Dict:
+			for x in Dict['items_dict']:
+				channelNum = Dict['items_dict'][x]['channelNum']
+				channelDesc = Dict['items_dict'][x]['channelDesc']
+				channelUrl = Dict['items_dict'][x]['channelUrl']
+				dateStr = Dict['items_dict'][x]['channelDate']
+				title = 'Channel: ' + channelNum + ' (' + channelDesc + ')'
+				#Log("channelDesc--------- " + str(channelDesc))
+				
+				if channelNum == each and Dict[each] <> 'removed' and 'MyCustomSearch' not in each:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+	except:
+		return ObjectContainer(header='Bookmarks', message='No Channels Available. Please check website URL !')
 	
 	#add a way to clear bookmarks list
 	oc.add(DirectoryObject(
@@ -555,7 +703,7 @@ def Bookmarks(items_dict, title):
 ######################################################################################
 # Checks a show to the bookmarks list using the title as a key for the url
 @route(PREFIX + "/checkbookmark")	
-def Check(channelNum, url):
+def CheckBookmark(channelNum, url):
 	bool = False
 	url = Dict[channelNum]
 	#Log("url check-----------" + str(url))
@@ -573,6 +721,7 @@ def AddBookmark(channelNum, url):
 	Dict[channelNum] = url
 	url = Dict[channelNum]
 	#Log("url add-----------" + str(url))
+	Dict['items_dict'] = {}
 	Dict.Save()
 	return ObjectContainer(header= 'Channel: ' + channelNum, message='This Channel has been added to your bookmarks.')
 ######################################################################################
@@ -585,6 +734,7 @@ def RemoveBookmark(title, channelNum, url):
 	#Log("url remove-----------" + str(url))
 	Dict[title] = 'removed'
 	Dict[channelNum] = 'removed'
+	Dict['items_dict'] = {}
 	Dict.Save()
 	return ObjectContainer(header='Channel: '+channelNum, message='This Channel has been removed from your bookmarks.')	
 ######################################################################################
@@ -598,5 +748,108 @@ def ClearBookmarks():
 		if url <> 'removed':
 			Dict[channelNum] = 'removed'
 			#Log("url remove-----------" + str(url))
+	Dict['items_dict'] = {}
 	Dict.Save()
 	return ObjectContainer(header="My Bookmarks", message='Your bookmark list will be cleared soon.')
+	
+######### PINS #############################################################################
+# Checks a show to the bookmarks list using the title as a key for the url
+@route(PREFIX + "/checkpin")	
+def CheckPin(url):
+
+	url = GetRedirector(url)
+	bool = False
+	url = Dict['Plex-Pin-Pin'+url]
+	#Log("url check-----------" + str(url))
+	if url != None and url <> 'removed':
+		bool = True
+	
+	return bool
+
+######################################################################################
+# Adds a Channel to the bookmarks list using the title as a key for the url
+	
+@route(PREFIX + "/addpin")
+def AddPin(channelNum, url, channelDesc):
+	
+	url = GetRedirector(url)
+	Dict['Plex-Pin-Pin'+url] = channelNum + 'Key4Split' + channelDesc + 'Key4Split' + url
+	
+	#Log("url add-----------" + str(url))
+	Dict['items_dict'] = {}
+	Dict.Save()
+	return ObjectContainer(header= 'Channel: ' + channelNum, message='This Channel has been added to your Pins.')
+######################################################################################
+# Removes a Channel to the bookmarks list using the title as a key for the url
+	
+@route(PREFIX + "/removepins")
+def RemovePin(url):
+	
+	channelNum = 'Undefined'
+	url = GetRedirector(url)
+	#url = Dict[title]
+	#Log("url remove-----------" + str(url))
+	keys = Dict['Plex-Pin-Pin'+url]
+	if 'Key4Split' in keys:
+		values = keys.split('Key4Split')
+		channelNum = values[0]
+		Dict['Plex-Pin-Pin'+url] = 'removed'
+		Dict['items_dict'] = {}
+		Dict.Save()
+	return ObjectContainer(header='Channel: '+channelNum, message='This Channel has been removed from your Pins.')	
+######################################################################################
+# Clears the Dict that stores the bookmarks list
+	
+@route(PREFIX + "/clearpins")
+def ClearPins():
+
+	for each in Dict:
+		keys = Dict[each]
+		if 'Key4Split' in keys:
+			Dict[each] = 'removed'
+			#Log("url remove-----------" + str(url))
+	Dict['items_dict'] = {}
+	Dict.Save()
+	return ObjectContainer(header="My Pins", message='Your Pins list will be cleared soon.')
+	
+######################################################################################
+# Pins
+@route(PREFIX + "/pins")	
+def Pins(title):
+
+	oc = ObjectContainer(title1 = title)
+	
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+
+	try:
+		for each in Dict:
+			keys = Dict[each]
+			if 'Key4Split' in keys:
+				values = keys.split('Key4Split')
+				channelNum = values[0]
+				channelDesc = values[1]
+				channelUrl = values[2]
+				title = 'Channel: ' + channelNum + ' (' + channelDesc + ')'
+				#Log("channelDesc--------- " + str(channelDesc))
+				
+				if 'removed' not in channelUrl:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
+	except:
+		return ObjectContainer(header='Pins', message='No Channels Available. Please check website URL !')
+	
+	#add a way to clear pin list
+	oc.add(DirectoryObject(
+		key = Callback(ClearPins),
+		title = "Clear All Pins",
+		thumb = R(ICON_QUEUE),
+		summary = "CAUTION! This will clear your entire Pins list!"
+		)
+	)
+	
+	if len(oc) == 1:
+		return ObjectContainer(header='Pins', message='No Pins Available')
+	
+	oc.objects.sort(key=lambda obj: obj.title)
+	return oc

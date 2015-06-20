@@ -11,7 +11,7 @@ System Requirements
 - **Plex Media Server:**
 	- Tested Working:
 		- Windows
-		- Linux (Ubuntu)
+		- Linux (Ubuntu) - Updater access will need to be set
 - **Plex Clients:**
 	- Tested Working:
 		- Plex Home Theater
@@ -50,3 +50,4 @@ Acknowledgements
 
 - Credits to [cCloud TV BETA | Popcorntime for LIVE TV an open source project] (https://www.google.com/?gws_rd=ssl#q=Ccloud+tv)
 - Credits to [Cigaras, Valdas Vaitiekaitis] (https://forums.plex.tv/index.php/topic/83083-iptvbundle-plugin-that-plays-iptv-streams-from-a-m3u-playlist/): IPTV (This plugins uses some parts)
+- Credits to [SharkOne] (https://forums.plex.tv/index.php/topic/102253-rel-bittorrent-channel/): (Some parts of Channel updater)
