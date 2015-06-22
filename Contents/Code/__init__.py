@@ -133,7 +133,7 @@ def RefreshListing(doRefresh):
 			
 			fetch_urls = page_elems.xpath(".//div[@class='table-title']//script//@src")
 			for eachFetchUrl in fetch_urls:
-			
+				eachFetchUrl = GetRedirector(eachFetchUrl)
 				bool = True
 				for name in DISABLED_NAMES:
 					if name in eachFetchUrl:
@@ -172,15 +172,21 @@ def RefreshListing(doRefresh):
 					srcStr = 'documentgetElementById'+channelId+'textContent'
 					#Log("srcStr----------" + srcStr)
 				except:
-					channelDesc = ' '
+					pass
+					
+				try:
+					channelDesc = eachCh.xpath(".//td[@class='text-left']//a//text()")[0]
+				except:
+					pass
+
 				try:
 					channelDesc = re.findall(srcStr+'(.*?);', page_data, re.S)[0]
 					#Log("channelDesc----------" + channelDesc)
 				except:
-					channelDesc = ' '
+					pass
 				
 				if channelDesc == None or channelDesc == 'Loading...' or channelDesc == ' ' or channelDesc == '':
-					channelDesc = unicode('Channel: ' + channelNum)
+					channelDesc = unicode('Undefined Channel: ' + channelNum)
 					
 				#Log("channelDesc----------" + channelDesc)
 				# get update date and used DirectoryObject tagline for sort feature
@@ -304,6 +310,7 @@ def DisplayPageList(title):
 		mCount=0
 		sCh = '0'
 		eCh = '9'
+		pageCount=0
 		for count in range(0,len(Dict['items_dict'])):
 			mCount = mCount+1
 			
@@ -312,8 +319,9 @@ def DisplayPageList(title):
 				sCh = channelNum
 			
 			if mCount == 10 or count == len(Dict['items_dict'])-1:
-				oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=int(sCh)), title = 'Channels: ' + str(sCh) + ' - ' + str(channelNum), thumb = R(ICON_PAGE)))
+				oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=(pageCount)), title = 'Channels: ' + str(sCh) + ' - ' + str(channelNum), thumb = R(ICON_PAGE)))
 				mCount = 0
+				pageCount=pageCount+10
 	except:
 		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
 
