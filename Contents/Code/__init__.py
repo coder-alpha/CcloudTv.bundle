@@ -26,7 +26,7 @@ DEV_URL = "/ch/l/tv"
 
 # using dictionary for temp. storing channel listing
 Dict['items_dict'] = {}
-DISABLED_NAMES = ['shspiderman']
+DISABLED_NAMES = ['EnterKeyNamesThatWillBeDisabled', 'tlk.io']
 
 LIST_VIEW_CLIENTS = ['Android','iOS']
 
@@ -81,7 +81,6 @@ def MainMenu():
 								bool = False
 								break
 						
-						if 'names.js' in eachFetchUrl and bool:
 							#Log("eachFetchUrl------------- " + eachFetchUrl)
 							try:
 								HTTP.PreCache(eachFetchUrl)
@@ -127,6 +126,7 @@ def RefreshListing(doRefresh):
 			return False
 		BASE_URL = webUrl + DEV_URL
 		try:
+			Dict['items_dict'] = {}
 			page_data = HTTP.Request(BASE_URL).content
 			page_elems = HTML.ElementFromString(page_data)
 			page_data = ''
@@ -140,11 +140,11 @@ def RefreshListing(doRefresh):
 						bool = False
 						break
 				
-				if 'names.js' in eachFetchUrl and bool:
 					#Log("eachFetchUrl------------- " + eachFetchUrl)
 					try:
 						page_data_r = HTTP.Request(eachFetchUrl).content
-						page_data = page_data + '\n' + page_data_r
+						if '<html>' not in page_data_r or '<head>' not in page_data_r:
+							page_data = page_data + '\n' + page_data_r
 					except:
 						page_data_r = ''
 			
@@ -167,8 +167,18 @@ def RefreshListing(doRefresh):
 				channelUrl = eachCh.xpath(".//td[@class='text-left']//a//@href")[0]
 				channelDesc = ' '
 				try:
-					channelId0 = channelUrl.split('/')
-					channelId = channelId0[len(channelId0)-1].replace('tv','')
+					# primary method
+					channelId0 = eachCh.xpath(".//td[@class='text-left']//a//@href")[0].split('/')
+					channelId = channelId0[len(channelId0)-1]
+					srcStr = 'documentgetElementById'+channelId+'textContent'
+					#Log("srcStr----------" + srcStr)
+				except:
+					pass
+					
+				try:
+					# secondary method
+					# fix for chs 176 - 282
+					channelId = eachCh.xpath(".//td[@class='text-left']//a//@id")[0]
 					srcStr = 'documentgetElementById'+channelId+'textContent'
 					#Log("srcStr----------" + srcStr)
 				except:
