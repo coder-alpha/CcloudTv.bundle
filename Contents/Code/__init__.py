@@ -72,7 +72,7 @@ def MainMenu():
 					page_data = HTTP.Request(BASE_URL).content
 					page_elems = HTML.ElementFromString(page_data)
 					
-					fetch_urls = page_elems.xpath(".//div[@class='table-title']//script//@src")
+					fetch_urls = page_elems.xpath(".//div[@class='table-title']//div[@class='ch-names']//script//@src")
 					for eachFetchUrl in fetch_urls:
 					
 						bool = True
@@ -90,7 +90,8 @@ def MainMenu():
 					page_data_r = ''
 		except:
 			page_data_r = ''
-			
+	
+	oc.add(DirectoryObject(key = Callback(Pins, title='My Channel Pins'), title = 'My Channel Pins', thumb = R(ICON_QUEUE)))
 	oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
 	oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
 	return oc
@@ -110,7 +111,6 @@ def ShowMenu(title):
 	oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH)))
 	oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks'), title = 'My Channel Bookmarks', thumb = R(ICON_QUEUE)))
-	oc.add(DirectoryObject(key = Callback(Pins, title='My Channel Pins'), title = 'My Channel Pins', thumb = R(ICON_QUEUE)))
 	oc.add(DirectoryObject(key = Callback(RefreshListing, doRefresh=True), title = 'Refresh Channels', thumb = R(ICON)))
 	
 	return oc
@@ -131,7 +131,8 @@ def RefreshListing(doRefresh):
 			page_elems = HTML.ElementFromString(page_data)
 			page_data = ''
 			
-			fetch_urls = page_elems.xpath(".//div[@class='table-title']//script//@src")
+			fetch_urls = page_elems.xpath(".//div[@class='table-title']//div[@class='ch-names']//script//@src")
+			fetch_urls = list(set(fetch_urls))
 			for eachFetchUrl in fetch_urls:
 				eachFetchUrl = GetRedirector(eachFetchUrl)
 				bool = True
@@ -837,10 +838,6 @@ def Pins(title):
 
 	oc = ObjectContainer(title1 = title)
 	
-	abortBool = RefreshListing(False)
-	if abortBool:
-		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
-
 	try:
 		for each in Dict:
 			keys = Dict[each]
