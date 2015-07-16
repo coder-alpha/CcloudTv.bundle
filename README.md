@@ -3,7 +3,7 @@ CcloudTv.bundle
 
 Plex Media Server plug-in designed for cCloud TV BETA | Popcorntime for LIVE TV
 
-- [Plex Forum Support Thread](https://forums.plex.tv/index.php/topic/166602-rel-ccloudtv-channel-iptv/)
+- [Plex Forum Support Thread](http://forums.plex.tv/discussion/166602/rel-ccloudtv-channel-iptv/p1)
 
 System Requirements
 ===================
@@ -11,7 +11,7 @@ System Requirements
 - **Plex Media Server:**
 	- Tested Working:
 		- Windows
-		- Linux (Ubuntu) - Updater access will need to be set
+		- Linux (Ubuntu) - cd to Plex Plugin's dir & use 'sudo chown -R CcloudTv.bundle'
 - **Plex Clients:**
 	- Tested Working:
 		- Plex Home Theater
@@ -44,11 +44,11 @@ Known Issues
 ==============
 
 - Some channels will not play, if so check in web-browser before reporting with an issue.
-[Plex Forum Support Thread](https://forums.plex.tv/index.php/topic/166602-rel-ccloudtv-channel-iptv/)
+[Plex Forum Support Thread](http://forums.plex.tv/discussion/166602/rel-ccloudtv-channel-iptv/p1)
 
 Acknowledgements
 ==============
 
-- Credits to [cCloud TV BETA | Popcorntime for LIVE TV an open source project] (https://www.google.com/?gws_rd=ssl#q=Ccloud+tv)
-- Credits to [Cigaras, Valdas Vaitiekaitis] (https://forums.plex.tv/index.php/topic/83083-iptvbundle-plugin-that-plays-iptv-streams-from-a-m3u-playlist/): IPTV (This plugins uses some parts)
-- Credits to [SharkOne] (https://forums.plex.tv/index.php/topic/102253-rel-bittorrent-channel/): (Some parts of Channel updater)
+- Credits to [cCloud TV BETA | Popcorntime for LIVE TV an open source project] (https://github.com/imbane/imbane.github.io)
+- Credits to [Cigaras, Valdas Vaitiekaitis] (https://forums.plex.tv/discussion/168305/iptv-plugin/p1): IPTV (This plugins uses some parts)
+- Credits to [SharkOne] (http://forums.plex.tv/discussion/102253/rel-bittorrent-channel/p1): (Some parts of Channel updater)
