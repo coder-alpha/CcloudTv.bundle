@@ -45,6 +45,9 @@ def Start():
 	#HTTP.CacheTime = CACHE_1HOUR
 	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0'
 	
+	Dict['AccessPin'] = '';
+	Dict.Save()
+	
 
 	
 ######################################################################################
@@ -92,9 +95,41 @@ def MainMenu():
 			page_data_r = ''
 	
 	oc.add(DirectoryObject(key = Callback(Pins, title='My Channel Pins'), title = 'My Channel Pins', thumb = R(ICON_QUEUE)))
-	oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
+	
 	oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
+	oc.add(DirectoryObject(key = Callback(DefineAccessControl, title='Access Control'), title = 'Access Control', summary='Set/Remove Temporary Access', thumb = R('lock.png')))
+	
+	if not Prefs['show_adult'] and Dict['AccessPin'] != Prefs['access_pin']:
+		oc.add(DirectoryObject(key = Callback(NoAccess), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
+	else:
+		oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
 	return oc
+	
+@route(PREFIX + "/defineaccesscontrol")
+def DefineAccessControl(title):
+	oc = ObjectContainer(title2=title)
+	oc.add(InputDirectoryObject(key = Callback(SetTempKey), thumb = R('unlock.png'), title='Set Access Key', summary='Set Temporary Access Key', prompt='Set Access..'))
+	oc.add(DirectoryObject(key = Callback(ClearAccessKey), thumb = R('lock.png'), title='Clear Access Key', summary='Clear Temporary Access Key'))
+	return oc
+	
+@route(PREFIX + "/settemppin")
+def SetTempKey(query):
+	Dict['items_dict'] = {}
+	Dict['AccessPin'] = query;
+	Dict.Save()
+	return ObjectContainer(header='Access Key', message='Your Temporary Access Key ' + query + ' has been saved.')
+
+@route(PREFIX + "/noaccess")
+def NoAccess():
+	return ObjectContainer(header='Update Plugin', message='Please Enable Access via Access Control')
+	
+@route(PREFIX + "/clearaccesskey")
+def ClearAccessKey():
+	Dict['items_dict'] = {}
+	Dict['AccessPin'] = '';
+	Dict.Save()
+	return ObjectContainer(header='Access Key', message='Your Temporary Access Key has been cleared.')
+
 
 @route(PREFIX + "/showMenu")
 def ShowMenu(title):
@@ -164,9 +199,14 @@ def RefreshListing(doRefresh):
 			week_ago = today - DT.timedelta(days=7)
 			
 			for eachCh in channels:
-				channelNum = eachCh.xpath(".//td[@class='text-center']//a//text()")[0]
-				channelUrl = eachCh.xpath(".//td[@class='text-left']//a//@href")[0]
+				channelNum = ' '
+				channelUrl = ' '
 				channelDesc = ' '
+				try:
+					channelNum = eachCh.xpath(".//td[@class='text-center']//a//text()")[0]
+					channelUrl = eachCh.xpath(".//td[@class='text-left']//a//@href")[0]
+				except:
+					pass
 				try:
 					# primary method
 					channelId0 = eachCh.xpath(".//td[@class='text-left']//a//@href")[0].split('/')
@@ -195,16 +235,48 @@ def RefreshListing(doRefresh):
 					#Log("channelDesc----------" + channelDesc)
 				except:
 					pass
+					
+				desc = 'Unknown'
+				country = 'Unknown'
+				lang = 'Unknown'
+				genre = 'Unknown'
+				views = 'Unknown'
+				active = 'Unknown'
+				onair = 'Unknown'
+				
+				try:
+					desc = eachCh.xpath(".//td[@class='text-left']//div[@class='desc']//@value")[0]
+					country = eachCh.xpath(".//td[@class='text-left']//div[@class='country']//@value")[0]
+					lang = eachCh.xpath(".//td[@class='text-left']//div[@class='lang']//@value")[0]
+					genre = eachCh.xpath(".//td[@class='text-left']//div[@class='genre']//@value")[0]
+					views = eachCh.xpath(".//td[@class='text-left']//div[@class='views']//@value")[0]
+					active = eachCh.xpath(".//td[@class='text-left']//div[@class='active']//@value")[0]
+					onair = eachCh.xpath(".//td[@class='text-left']//div[@class='onair']//@value")[0]
+				except:
+					pass
 				
 				if channelDesc == None or channelDesc == 'Loading...' or channelDesc == ' ' or channelDesc == '':
 					channelDesc = unicode('Undefined Channel: ' + channelNum)
 					
 				#Log("channelDesc----------" + channelDesc)
 				# get update date and used DirectoryObject tagline for sort feature
-				dateStr = getDate(channelDesc,week_ago)
+				dateStr = ' '
+				try:
+					dateStr = getDate(channelDesc,week_ago)
+				except:
+					pass
+					
+				mature = 'N'
+				try:
+					mature = isAdultChannel(channelDesc)
+				except:
+					pass
 				
-				Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
-				count = count + 1
+				try:
+					Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr, 'desc': desc, 'country': country, 'lang': lang, 'genre': genre, 'views': views, 'active': active, 'onair': onair, 'mature': mature}
+					count = count + 1
+				except:
+					pass
 				
 			abortBool = False
 			if doRefresh:
@@ -242,13 +314,37 @@ def DisplayList(title):
 			
 			#Log("channelUrl--------------" + str(channelUrl))
 			title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
-			
 			#Log("title----------" + title)
 			
-			if Client.Platform not in LIST_VIEW_CLIENTS:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
-			else:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = None))
+			desc = 'Unknown'
+			country = 'Unknown'
+			lang = 'Unknown'
+			genre = 'Unknown'
+			views = 'Unknown'
+			active = 'Unknown'
+			onair = 'Unknown'
+			mature = 'Unknown'
+			try:
+				mature = Dict['items_dict'][count]['mature']
+				desc = Dict['items_dict'][count]['desc']
+				country = Dict['items_dict'][count]['country']
+				lang = Dict['items_dict'][count]['lang']
+				genre = Dict['items_dict'][count]['genre']
+				views = Dict['items_dict'][count]['views']
+				active = Dict['items_dict'][count]['active']
+				onair = Dict['items_dict'][count]['onair']
+			except:
+				pass
+			
+			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
+			
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+				
+			if not abortBool2:
+				if Client.Platform not in LIST_VIEW_CLIENTS:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
+				else:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
 			
 		abortBool = False	
 	except:
@@ -287,14 +383,39 @@ def DisplayPage(title, iRange):
 			
 			#Log("channelUrl--------------" + str(channelUrl))
 			title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
-			
 			#Log("title----------" + title)
 			
-			if Client.Platform not in LIST_VIEW_CLIENTS:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
-			else:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = None))
+			desc = 'Unknown'
+			country = 'Unknown'
+			lang = 'Unknown'
+			genre = 'Unknown'
+			views = 'Unknown'
+			active = 'Unknown'
+			onair = 'Unknown'
+			mature = 'Unknown'
+			try:
+				mature = Dict['items_dict'][count]['mature']
+				desc = Dict['items_dict'][count]['desc']
+				country = Dict['items_dict'][count]['country']
+				lang = Dict['items_dict'][count]['lang']
+				genre = Dict['items_dict'][count]['genre']
+				views = Dict['items_dict'][count]['views']
+				active = Dict['items_dict'][count]['active']
+				onair = Dict['items_dict'][count]['onair']
+			except:
+				pass
 			
+			Log("mature -----------------" + mature)
+			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
+			
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+			
+			if not abortBool2:
+				if Client.Platform not in LIST_VIEW_CLIENTS:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
+				else:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
+				
 			if mCount == 9:
 				oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=int(iRange)+10), title = 'More >>', thumb = R(ICON_PAGE)))
 				break
@@ -352,7 +473,7 @@ def getDate(channelDesc,week_ago):
 		elif '/' in channelUpDate and ':' in channelUpDate:
 			dateStr = channelUpDate.split(':')[0]
 	except:
-		dateStr = str(week_ago.month) + '/' + str(week_ago.day)
+		dateStr = str(week_ago.month) + '/' + str(week_ago.day) + '/' + str(week_ago.year)
 		
 	try:
 		if ':' in dateStr:
@@ -363,6 +484,13 @@ def getDate(channelDesc,week_ago):
 	try:
 		dateStrS = dateStr.split('/')
 		dateStr = str("%02d" % int(dateStrS[0])) + '/' + str("%02d" % int(dateStrS[1]))
+		if len(dateStrS) > 2:
+			if len(dateStrS[2]) == 2:
+				dateStr = dateStr + '/20' + str("%02d" % int(dateStrS[2]))
+			elif len(dateStrS[2]) == 4:
+				dateStr = dateStr + '/' + str(dateStrS[2])
+		else:
+			dateStr = dateStr + '/' + str(week_ago.year)
 	except:
 		dateStr = 'Undefined'
 		
@@ -411,7 +539,7 @@ def ChannelPage(url, title, channelDesc, channelNum):
 		))
 	else:
 		oc.add(DirectoryObject(
-			key = Callback(AddPin, channelNum = channelNum, url = url, channelDesc = channelDesc),
+			key = Callback(AddPin, channelNum = channelNum, url = url, title = title, channelDesc = channelDesc),
 			title = "Pin Channel",
 			summary = 'Adds the current Channel to the Pin list',
 			thumb = R(ICON_QUEUE)
@@ -441,6 +569,37 @@ def GetChannelThumb(url):
 		thumb = R(ICON_SERIES_UNAV)
 
 	return thumb
+	
+	
+####################################################################################################
+# Filter channels based on preferences
+@route(PREFIX + '/channelfilters')
+def ChannelFilters(active, onair, lang, country, mature):
+	
+	abortBool2 = False
+	if Prefs['show_active'] and active == 'N':
+		abortBool2 = True
+	if Prefs['show_onair'] and onair == 'N':
+		abortBool2 = True
+	if Prefs['show_lang'] <> None and lang != 'Unknown' and unicode(Prefs['show_lang']).strip().lower() != unicode(lang).strip().lower():
+		abortBool2 = True
+	if Prefs['show_country'] <> None and Prefs['show_country'] != 'ALL' and country != 'Unknown' and Prefs['show_country'] != country:
+		abortBool2 = True	
+	if not Prefs['show_adult'] and mature == 'Y' and Dict['AccessPin'] != Prefs['access_pin']:
+		abortBool2 = True
+		
+	return abortBool2
+	
+####################################################################################################
+# is Channel Adult rated based on '18+' keyword
+@route(PREFIX + '/isadultchannel')
+def isAdultChannel(channelDesc):
+	
+	adult = 'N'
+	if '18+' in channelDesc:
+		adult = 'Y'
+		
+	return adult
 	
 ####################################################################################################
 # Gets the redirecting url for .m3u8 streams
@@ -603,18 +762,45 @@ def Search(query):
 			start = 0
 			end = 0
 	try:
-		for x in Dict['items_dict']:
-			channelNum = Dict['items_dict'][x]['channelNum']
-			channelDesc = Dict['items_dict'][x]['channelDesc']
-			channelUrl = Dict['items_dict'][x]['channelUrl']
-			dateStr = Dict['items_dict'][x]['channelDate']
+		for count in Dict['items_dict']:
+			channelNum = Dict['items_dict'][count]['channelNum']
+			channelDesc = Dict['items_dict'][count]['channelDesc']
+			channelUrl = Dict['items_dict'][count]['channelUrl']
+			dateStr = Dict['items_dict'][count]['channelDate']
 			title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
 			#Log("channelDesc--------- " + channelDesc)
 			
-			if query.lower() in channelDesc.lower() or query == channelNum:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+			desc = 'Unknown'
+			country = 'Unknown'
+			lang = 'Unknown'
+			genre = 'Unknown'
+			views = 'Unknown'
+			active = 'Unknown'
+			onair = 'Unknown'
+			mature = 'Unknown'
+			try:
+				mature = Dict['items_dict'][count]['mature']
+				desc = Dict['items_dict'][count]['desc']
+				country = Dict['items_dict'][count]['country']
+				lang = Dict['items_dict'][count]['lang']
+				genre = Dict['items_dict'][count]['genre']
+				views = Dict['items_dict'][count]['views']
+				active = Dict['items_dict'][count]['active']
+				onair = Dict['items_dict'][count]['onair']
+			except:
+				pass
+			
+			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
+			
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+			
+			if not abortBool2 and query.lower() in channelDesc.lower() or query == channelNum:
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
 			elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+				if not Prefs['show_adult'] and mature == 'Y' and Dict['AccessPin'] != Prefs['access_pin']:
+					pass
+				else:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
 	except:
 		return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
 	
@@ -696,8 +882,34 @@ def Bookmarks(title):
 				title = 'Channel: ' + channelNum + ' (' + channelDesc + ')'
 				#Log("channelDesc--------- " + str(channelDesc))
 				
-				if channelNum == each and Dict[each] <> 'removed' and 'MyCustomSearch' not in each:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), tagline=dateStr, title = title, thumb = R(ICON_LIST)))
+				desc = 'Unknown'
+				country = 'Unknown'
+				lang = 'Unknown'
+				genre = 'Unknown'
+				views = 'Unknown'
+				
+				try:
+					desc = Dict['items_dict'][x]['desc']
+					country = Dict['items_dict'][x]['country']
+					lang = Dict['items_dict'][x]['lang']
+					genre = Dict['items_dict'][x]['genre']
+					views = Dict['items_dict'][x]['views']
+				except:
+					pass
+				
+				summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+				
+				mature = 'N'
+				try:
+					mature = isAdultChannel(channelDesc)
+				except:
+					pass
+				
+				if not Prefs['show_adult'] and mature == 'Y' and Dict['AccessPin'] != Prefs['access_pin']:
+					pass
+				else:
+					if channelNum == each and Dict[each] <> 'removed' and 'MyCustomSearch' not in each:
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
 	except:
 		return ObjectContainer(header='Bookmarks', message='No Channels Available. Please check website URL !')
 	
@@ -789,10 +1001,10 @@ def CheckPin(url):
 # Adds a Channel to the bookmarks list using the title as a key for the url
 	
 @route(PREFIX + "/addpin")
-def AddPin(channelNum, url, channelDesc):
+def AddPin(channelNum, url, title, channelDesc):
 	
 	url = GetRedirector(url)
-	Dict['Plex-Pin-Pin'+url] = channelNum + 'Key4Split' + channelDesc + 'Key4Split' + url
+	Dict['Plex-Pin-Pin'+url] = channelNum + 'Key4Split' + title + 'Key4Split' + channelDesc + 'Key4Split' + url
 	
 	#Log("url add-----------" + str(url))
 	Dict['items_dict'] = {}
@@ -843,14 +1055,46 @@ def Pins(title):
 			keys = Dict[each]
 			if 'Key4Split' in keys:
 				values = keys.split('Key4Split')
-				channelNum = values[0]
-				channelDesc = values[1]
-				channelUrl = values[2]
-				title = 'Channel: ' + channelNum + ' (' + channelDesc + ')'
+				if len(values) == 4:
+					channelNum = values[0]
+					title = values[1]
+					channelDesc = values[2]
+					channelUrl = values[3]
+				else:
+					channelNum = values[0]
+					channelDesc = values[1]
+					channelUrl = values[2]
+					title = channelDesc
 				#Log("channelDesc--------- " + str(channelDesc))
 				
-				if 'removed' not in channelUrl:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = channelDesc, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
+				desc = 'Unknown'
+				country = 'Unknown'
+				lang = 'Unknown'
+				genre = 'Unknown'
+				views = 'Unknown'
+				
+				try:
+					desc = Dict['items_dict'][x]['desc']
+					country = Dict['items_dict'][x]['country']
+					lang = Dict['items_dict'][x]['lang']
+					genre = Dict['items_dict'][x]['genre']
+					views = Dict['items_dict'][x]['views']
+				except:
+					pass
+				
+				summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+				
+				mature = 'N'
+				try:
+					mature = isAdultChannel(title)
+				except:
+					pass
+					
+				if not Prefs['show_adult'] and mature == 'Y' and Dict['AccessPin'] != Prefs['access_pin']:
+					pass
+				else:
+					if 'removed' not in channelUrl:
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
 	except:
 		return ObjectContainer(header='Pins', message='No Channels Available. Please check website URL !')
 	
