@@ -11,7 +11,7 @@ System Requirements
 - **Plex Media Server:**
 	- Tested Working:
 		- Windows
-		- Linux (Ubuntu) - cd to Plex Plugin's dir & use 'sudo chown -R CcloudTv.bundle'
+		- Linux (Ubuntu) - cd to Plex Plugin's dir & use 'sudo chown -R plex:plex CcloudTv.bundle'
 - **Plex Clients:**
 	- Tested Working:
 		- Plex Home Theater
