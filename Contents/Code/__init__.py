@@ -11,13 +11,22 @@ TITLE = common.TITLE
 PREFIX = common.PREFIX
 ART = "art-default.jpg"
 ICON = "icon-ccloudtv.png"
-ICON_LIST = "icon-list.png"
-ICON_SEARCH = "icon-search.png"
+ICON_VIDEO = "icon-video.png"
+ICON_AUDIO = "icon-audio.png"
 ICON_SERIES = "icon-series.png"
 ICON_SERIES_UNAV = "icon-series-unav.png"
-ICON_AUDIO = "icon-audio.png"
-ICON_QUEUE = "icon-queue.png"
-ICON_PAGE = "icon-page.png"
+ICON_GENRES = "icon-genres.png"
+ICON_GENRE = "icon-genre.png"
+ICON_LISTVIEW = "icon-listview.png"
+ICON_PAGE = "icon-paged.png"
+ICON_PAGELIST = "icon-pagelist.png"
+ICON_NEXT = "icon-next.png"
+ICON_SEARCH = "icon-search.png"
+ICON_SEARCH_QUEUE = "icon-search-queue.png"
+ICON_PIN = "icon-pin.png"
+ICON_BOOKMARK = "icon-bookmark.png"
+ICON_LOCK = "icon-lock.png"
+ICON_UNLOCK = "icon-unlock.png"
 ICON_PREFS = "icon-prefs.png"
 ICON_UPDATE = "icon-update.png"
 
@@ -30,13 +39,17 @@ DISABLED_NAMES = ['EnterKeyNamesThatWillBeDisabled', 'tlk.io']
 
 LIST_VIEW_CLIENTS = ['Android','iOS']
 
+GENRE_ARRAY = []
+
+
+
 ######################################################################################
 
 def Start():
 
 	ObjectContainer.title1 = TITLE
 	ObjectContainer.art = R(ART)
-	DirectoryObject.thumb = R(ICON_LIST)
+	DirectoryObject.thumb = R(ICON_SERIES)
 	DirectoryObject.art = R(ART)
 	VideoClipObject.thumb = R(ICON_SERIES)
 	VideoClipObject.art = R(ART)
@@ -45,9 +58,9 @@ def Start():
 	#HTTP.CacheTime = CACHE_1HOUR
 	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0'
 	
-	Dict['AccessPin'] = '';
+	Dict['AccessPin'] = ''
+	Dict['NewRetMethod'] = 'Y'
 	Dict.Save()
-	
 
 	
 ######################################################################################
@@ -94,10 +107,10 @@ def MainMenu():
 		except:
 			page_data_r = ''
 	
-	oc.add(DirectoryObject(key = Callback(Pins, title='My Channel Pins'), title = 'My Channel Pins', thumb = R(ICON_QUEUE)))
+	oc.add(DirectoryObject(key = Callback(Pins, title='My Channel Pins'), title = 'My Channel Pins', thumb = R(ICON_PIN)))
 	
 	oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
-	oc.add(DirectoryObject(key = Callback(DefineAccessControl, title='Access Control'), title = 'Access Control', summary='Set/Remove Temporary Access', thumb = R('lock.png')))
+	oc.add(DirectoryObject(key = Callback(DefineAccessControl, title='Access Control'), title = 'Access Control', summary='Set/Remove Temporary Access', thumb = R(ICON_LOCK)))
 	
 	if not Prefs['show_adult'] and Dict['AccessPin'] != Prefs['access_pin']:
 		oc.add(DirectoryObject(key = Callback(NoAccess), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
@@ -108,8 +121,8 @@ def MainMenu():
 @route(PREFIX + "/defineaccesscontrol")
 def DefineAccessControl(title):
 	oc = ObjectContainer(title2=title)
-	oc.add(InputDirectoryObject(key = Callback(SetTempKey), thumb = R('unlock.png'), title='Set Access Key', summary='Set Temporary Access Key', prompt='Set Access..'))
-	oc.add(DirectoryObject(key = Callback(ClearAccessKey), thumb = R('lock.png'), title='Clear Access Key', summary='Clear Temporary Access Key'))
+	oc.add(InputDirectoryObject(key = Callback(SetTempKey), thumb = R(ICON_UNLOCK), title='Set Access Key', summary='Set Temporary Access Key', prompt='Set Access..'))
+	oc.add(DirectoryObject(key = Callback(ClearAccessKey), thumb = R(ICON_LOCK), title='Clear Access Key', summary='Clear Temporary Access Key'))
 	return oc
 	
 @route(PREFIX + "/settemppin")
@@ -140,22 +153,40 @@ def ShowMenu(title):
 	if abortBool:
 		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
 
-	oc.add(DirectoryObject(key = Callback(DisplayList, title='List View'), title = 'List View', thumb = R(ICON_PAGE)))
+	oc.add(DirectoryObject(key = Callback(DisplayList, title='List View'), title = 'List View', thumb = R(ICON_LISTVIEW)))
 	oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=0), title = 'Page View', thumb = R(ICON_PAGE)))
-	oc.add(DirectoryObject(key = Callback(DisplayPageList, title='Page List'), title = 'Page List', thumb = R(ICON_PAGE)))
+	oc.add(DirectoryObject(key = Callback(DisplayPageList, title='Page List'), title = 'Page List', thumb = R(ICON_PAGELIST)))
 	oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
-	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH)))
-	oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks'), title = 'My Channel Bookmarks', thumb = R(ICON_QUEUE)))
-	oc.add(DirectoryObject(key = Callback(RefreshListing, doRefresh=True), title = 'Refresh Channels', thumb = R(ICON)))
+	if Dict['NewRetMethod'] != 'N':
+		oc.add(DirectoryObject(key = Callback(DisplayGenreMenu, title='Genres'), title = 'Genres', thumb = R(ICON_GENRES)))
+	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH_QUEUE)))
+	oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks'), title = 'My Channel Bookmarks', thumb = R(ICON_BOOKMARK)))
+	oc.add(DirectoryObject(key = Callback(RefreshListing1, doRefresh=True), title = 'Refresh Channels', thumb = R(ICON)))
+	oc.add(DirectoryObject(key = Callback(RefreshListing2, doRefresh=True), title = 'Refresh Beta Channels', thumb = R(ICON)))
 	
 	return oc
 	
 @route(PREFIX + "/refreshlisting")
 def RefreshListing(doRefresh):
 
+	Dict['items_dict'] = {}
+	
+	try:
+		if Dict['NewRetMethod'] == 'N':
+			return RefreshListing1(doRefresh)
+		else:
+			return RefreshListing2(doRefresh)
+	except:
+		return False
+	
+@route(PREFIX + "/refreshlisting1")
+def RefreshListing1(doRefresh):
+	Dict['NewRetMethod'] = 'N'
+	Dict.Save()
+	
 	abortBool = True
 	webUrl = Prefs['web_url']
-	
+
 	if webUrl <> None and webUrl.startswith('http'):
 		if Dict['items_dict'] <> {} and not doRefresh:
 			return False
@@ -289,6 +320,105 @@ def RefreshListing(doRefresh):
 		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !')		
 	return abortBool
 	
+@route(PREFIX + "/refreshlisting2")
+def RefreshListing2(doRefresh):
+	Dict['NewRetMethod'] = 'Y'
+	#Dict.Save()
+	
+	abortBool = True
+	webUrl = 'http://pastebin.com/raw.php?i=KzhgEVju'
+
+	if webUrl <> None and webUrl.startswith('http'):
+		if Dict['items_dict'] <> {} and not doRefresh:
+			return False
+		try:
+			Dict['items_dict'] = {}
+			page_data = HTTP.Request(webUrl).content
+			page_data = page_data.strip()
+			channels = page_data.split('||')
+
+			count = 0
+			today = DT.date.today()
+			week_ago = today - DT.timedelta(days=7)
+			
+			for eachCh in channels:
+				if eachCh.startswith('//'):
+					pass
+				else:
+					chMeta = eachCh.split(';')
+					channelNum = ' '
+					channelUrl = ' '
+					channelDesc = ' '
+					desc = 'Unknown'
+					country = 'Unknown'
+					lang = 'Unknown'
+					genre = 'Unknown'
+					views = 'Unknown'
+					active = 'Unknown'
+					onair = 'Unknown'
+					
+					try:
+						if chMeta[0] <> None:
+							channelNum = chMeta[0].strip()
+						if chMeta[1] <> None:
+							if 'Help' in chMeta[1] and 'IPTV' in chMeta[1]:
+								channelDesc = ' '
+							else:
+								channelDesc = chMeta[1]
+						if chMeta[2] <> None:
+							genre = chMeta[2]
+							if genre in GENRE_ARRAY:
+								pass
+							else:
+								GENRE_ARRAY.append(genre)
+						if chMeta[3] <> None:
+							country = chMeta[3]
+						if chMeta[4] <> None:
+							lang = chMeta[4]
+						if chMeta[5] <> None:
+							channelUrl = chMeta[5]
+						desc = channelDesc
+					except:
+						pass
+					
+					if channelDesc == None or channelDesc == 'Loading...' or channelDesc == ' ' or channelDesc == '':
+						channelDesc = unicode('Undefined Channel: ' + channelNum)
+						
+					#Log("channelDesc----------" + channelDesc)
+					# get update date and used DirectoryObject tagline for sort feature
+					dateStr = ' '
+					try:
+						dateStr = getDate(channelDesc,week_ago)
+					except:
+						pass
+						
+					mature = 'N'
+					try:
+						mature = isAdultChannel(channelDesc)
+					except:
+						pass
+						
+					if mature == 'N':
+						if genre == 'Adult':
+							mature = 'Y'
+					
+					try:
+						Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr, 'desc': desc, 'country': country, 'lang': lang, 'genre': genre, 'views': views, 'active': active, 'onair': onair, 'mature': mature}
+						count = count + 1
+					except:
+						pass
+				
+			abortBool = False
+			if doRefresh:
+				return ObjectContainer(header='Refresh Successful', message='New Channel listing retrieved !')
+		except:
+			BASE_URL = ""
+			abortBool = True
+
+	if doRefresh:
+		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !')		
+	return abortBool	
+	
 @route(PREFIX + "/displaylist")
 def DisplayList(title):
 	oc = ObjectContainer(title2=title)
@@ -342,7 +472,7 @@ def DisplayList(title):
 				
 			if not abortBool2:
 				if Client.Platform not in LIST_VIEW_CLIENTS:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
 				else:
 					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
 			
@@ -357,6 +487,84 @@ def DisplayList(title):
 		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
 	return oc
 
+@route(PREFIX + "/displaygenremenu")
+def DisplayGenreMenu(title):
+	oc = ObjectContainer(title2=title)
+	for genre in GENRE_ARRAY:
+		if genre == 'Adult':
+			if Prefs['show_adult'] or Dict['AccessPin'] == Prefs['access_pin']:
+				oc.add(DirectoryObject(key = Callback(DisplayGenreSort, titleGen=genre), title = genre, thumb = R(ICON_GENRE)))
+		else:
+			oc.add(DirectoryObject(key = Callback(DisplayGenreSort, titleGen=genre), title = genre, thumb = R(ICON_GENRE)))
+	return oc
+	
+@route(PREFIX + "/displaygenresort")
+def DisplayGenreSort(titleGen):
+	oc = ObjectContainer(title2=titleGen)
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=titleGen, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	if Client.Platform not in LIST_VIEW_CLIENTS:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+	else:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
+	
+	try:
+		for count in range(0,len(Dict['items_dict'])):
+			
+			#items_dict[count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
+			
+			channelNum = Dict['items_dict'][count]['channelNum']
+			channelDesc = Dict['items_dict'][count]['channelDesc']
+			channelUrl = Dict['items_dict'][count]['channelUrl']
+			dateStr = Dict['items_dict'][count]['channelDate']
+			
+			#Log("channelUrl--------------" + str(channelUrl))
+			title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
+			#Log("title----------" + title)
+			
+			desc = 'Unknown'
+			country = 'Unknown'
+			lang = 'Unknown'
+			genre = 'Unknown'
+			views = 'Unknown'
+			active = 'Unknown'
+			onair = 'Unknown'
+			mature = 'Unknown'
+			try:
+				mature = Dict['items_dict'][count]['mature']
+				desc = Dict['items_dict'][count]['desc']
+				country = Dict['items_dict'][count]['country']
+				lang = Dict['items_dict'][count]['lang']
+				genre = Dict['items_dict'][count]['genre']
+				views = Dict['items_dict'][count]['views']
+				active = Dict['items_dict'][count]['active']
+				onair = Dict['items_dict'][count]['onair']
+			except:
+				pass
+			
+			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
+			
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+				
+			if not abortBool2 and titleGen == genre:
+				if Client.Platform not in LIST_VIEW_CLIENTS:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
+				else:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
+			
+		abortBool = False	
+	except:
+		abortBool = True
+	
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	if Prefs['use_datesort']:
+		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
+	return oc
+	
 @route(PREFIX + "/displaypage")
 def DisplayPage(title, iRange):
 	oc = ObjectContainer(title2=title)
@@ -405,19 +613,19 @@ def DisplayPage(title, iRange):
 			except:
 				pass
 			
-			Log("mature -----------------" + mature)
+			#Log("mature -----------------" + mature)
 			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
 			
 			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
 			
 			if not abortBool2:
 				if Client.Platform not in LIST_VIEW_CLIENTS:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
 				else:
 					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
 				
 			if mCount == 9:
-				oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=int(iRange)+10), title = 'More >>', thumb = R(ICON_PAGE)))
+				oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=int(iRange)+10), title = 'More >>', thumb = R(ICON_NEXT)))
 				break
 			mCount = mCount+1
 	except:
@@ -521,28 +729,28 @@ def ChannelPage(url, title, channelDesc, channelNum):
 			key = Callback(RemoveBookmark, title = title, channelNum = channelNum, url = url),
 			title = "Remove Bookmark",
 			summary = 'Removes the current Channel from the Boomark queue',
-			thumb = R(ICON_QUEUE)
+			thumb = R(ICON_BOOKMARK)
 		))
 	else:
 		oc.add(DirectoryObject(
 			key = Callback(AddBookmark, channelNum = channelNum, url = url),
 			title = "Bookmark Channel",
 			summary = 'Adds the current Channel to the Boomark queue',
-			thumb = R(ICON_QUEUE)
+			thumb = R(ICON_BOOKMARK)
 		))
 	if CheckPin(url=url):
 		oc.add(DirectoryObject(
 			key = Callback(RemovePin, url = url),
 			title = "Remove Pin",
 			summary = 'Removes the current Channel from the Pin list',
-			thumb = R(ICON_QUEUE)
+			thumb = R(ICON_PIN)
 		))
 	else:
 		oc.add(DirectoryObject(
 			key = Callback(AddPin, channelNum = channelNum, url = url, title = title, channelDesc = channelDesc),
 			title = "Pin Channel",
 			summary = 'Adds the current Channel to the Pin list',
-			thumb = R(ICON_QUEUE)
+			thumb = R(ICON_PIN)
 		))
 	
 	abortBool = RefreshListing(False)
@@ -560,9 +768,9 @@ def GetChannelThumb(url):
 		if '.m3u8' in url:
 			page = HTTP.Request(url).content
 			if 'html' not in page and 'div' not in page and '#EXTM3U' in page:
-				thumb = R(ICON_SERIES)
+				thumb = R(ICON_VIDEO)
 		elif '.m3u' in url:
-			thumb = R(ICON_SERIES)
+			thumb = R(ICON_VIDEO)
 		elif '.aac' in url or '.mp3' in url:
 			thumb = R(ICON_AUDIO)
 	except:
@@ -795,12 +1003,12 @@ def Search(query):
 			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
 			
 			if not abortBool2 and query.lower() in channelDesc.lower() or query == channelNum:
-				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
+				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
 			elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
 				if not Prefs['show_adult'] and mature == 'Y' and Dict['AccessPin'] != Prefs['access_pin']:
 					pass
 				else:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
 	except:
 		return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
 	
@@ -864,8 +1072,8 @@ def ClearSearches():
 def Bookmarks(title):
 
 	oc = ObjectContainer(title1 = title)
-	
 	abortBool = RefreshListing(False)
+	
 	if abortBool:
 		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
 		
@@ -909,7 +1117,7 @@ def Bookmarks(title):
 					pass
 				else:
 					if channelNum == each and Dict[each] <> 'removed' and 'MyCustomSearch' not in each:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_LIST)))
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
 	except:
 		return ObjectContainer(header='Bookmarks', message='No Channels Available. Please check website URL !')
 	
@@ -917,7 +1125,7 @@ def Bookmarks(title):
 	oc.add(DirectoryObject(
 		key = Callback(ClearBookmarks),
 		title = "Clear Bookmarks",
-		thumb = R(ICON_QUEUE),
+		thumb = R(ICON_PIN),
 		summary = "CAUTION! This will clear your entire bookmark list!"
 		)
 	)
@@ -1094,7 +1302,7 @@ def Pins(title):
 					pass
 				else:
 					if 'removed' not in channelUrl:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), title = title, thumb = R(ICON_LIST)))
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), title = title, thumb = R(ICON_SERIES)))
 	except:
 		return ObjectContainer(header='Pins', message='No Channels Available. Please check website URL !')
 	
@@ -1102,7 +1310,7 @@ def Pins(title):
 	oc.add(DirectoryObject(
 		key = Callback(ClearPins),
 		title = "Clear All Pins",
-		thumb = R(ICON_QUEUE),
+		thumb = R(ICON_PIN),
 		summary = "CAUTION! This will clear your entire Pins list!"
 		)
 	)
