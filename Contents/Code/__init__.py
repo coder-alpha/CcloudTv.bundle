@@ -29,6 +29,7 @@ ICON_LOCK = "icon-lock.png"
 ICON_UNLOCK = "icon-unlock.png"
 ICON_PREFS = "icon-prefs.png"
 ICON_UPDATE = "icon-update.png"
+ICON_UPDATE_NEW = "icon-update-new.png"
 
 BASE_URL = ""
 DEV_URL = "/ch/l/tv"
@@ -115,7 +116,10 @@ def MainMenu():
 	if not Prefs['show_adult'] and Dict['AccessPin'] != Prefs['access_pin']:
 		oc.add(DirectoryObject(key = Callback(NoAccess), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
 	else:
-		oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
+		if updater.update_available()[0]:
+			oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update (New Available)', thumb = R(ICON_UPDATE_NEW)))
+		else:
+			oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update (Running Latest)', thumb = R(ICON_UPDATE)))
 	return oc
 	
 @route(PREFIX + "/defineaccesscontrol")
@@ -156,9 +160,9 @@ def ShowMenu(title):
 	oc.add(DirectoryObject(key = Callback(DisplayList, title='List View'), title = 'List View', thumb = R(ICON_LISTVIEW)))
 	oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=0), title = 'Page View', thumb = R(ICON_PAGE)))
 	oc.add(DirectoryObject(key = Callback(DisplayPageList, title='Page List'), title = 'Page List', thumb = R(ICON_PAGELIST)))
-	oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 	if Dict['NewRetMethod'] != 'N':
 		oc.add(DirectoryObject(key = Callback(DisplayGenreMenu, title='Genres'), title = 'Genres', thumb = R(ICON_GENRES)))
+	oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH_QUEUE)))
 	oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks'), title = 'My Channel Bookmarks', thumb = R(ICON_BOOKMARK)))
 	oc.add(DirectoryObject(key = Callback(RefreshListing1, doRefresh=True), title = 'Refresh Channels', thumb = R(ICON)))
@@ -340,6 +344,7 @@ def RefreshListing2(doRefresh):
 			count = 0
 			today = DT.date.today()
 			week_ago = today - DT.timedelta(days=7)
+			del GENRE_ARRAY[:]
 			
 			for eachCh in channels:
 				if eachCh.startswith('//'):
