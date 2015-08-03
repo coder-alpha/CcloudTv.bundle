@@ -5,6 +5,7 @@
 ######################################################################################
 import re, urllib, common, updater
 import datetime as DT
+from datetime import datetime
 
 # Set global variables
 TITLE = common.TITLE
@@ -30,16 +31,17 @@ ICON_UNLOCK = "icon-unlock.png"
 ICON_PREFS = "icon-prefs.png"
 ICON_UPDATE = "icon-update.png"
 ICON_UPDATE_NEW = "icon-update-new.png"
+ICON_RECENT = "icon-recent.png"
 
 BASE_URL = ""
-DEV_URL = "/ch/l/tv"
 
 # using dictionary for temp. storing channel listing
 Dict['items_dict'] = {}
-DISABLED_NAMES = ['EnterKeyNamesThatWillBeDisabled', 'tlk.io']
 
+# set clients thats should display content as list
 LIST_VIEW_CLIENTS = ['Android','iOS']
 
+# genre listing
 GENRE_ARRAY = []
 
 
@@ -58,10 +60,6 @@ def Start():
 	HTTP.ClearCache()
 	#HTTP.CacheTime = CACHE_1HOUR
 	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0'
-	
-	Dict['AccessPin'] = ''
-	Dict['NewRetMethod'] = 'Y'
-	Dict.Save()
 
 	
 ######################################################################################
@@ -79,48 +77,39 @@ def MainMenu():
 		ChHelper2 = ' - Listing retrieved'
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = 'Channels'), title = 'Channels' + ChHelper, summary = 'Channels' + ChHelper2, thumb = R(ICON)))
 	
-	# preCache
-	if Prefs['use_precache']:
-		try:
-			webUrl = Prefs['web_url']
-			if webUrl <> None and webUrl.startswith('http'):
-				BASE_URL = webUrl + DEV_URL
-				try:
-					page_data = HTTP.Request(BASE_URL).content
-					page_elems = HTML.ElementFromString(page_data)
-					
-					fetch_urls = page_elems.xpath(".//div[@class='table-title']//div[@class='ch-names']//script//@src")
-					for eachFetchUrl in fetch_urls:
-					
-						bool = True
-						for name in DISABLED_NAMES:
-							if name in eachFetchUrl:
-								bool = False
-								break
-						
-							#Log("eachFetchUrl------------- " + eachFetchUrl)
-							try:
-								HTTP.PreCache(eachFetchUrl)
-							except:
-								page_data_r = ''
-				except:
-					page_data_r = ''
-		except:
-			page_data_r = ''
-	
 	oc.add(DirectoryObject(key = Callback(Pins, title='My Channel Pins'), title = 'My Channel Pins', thumb = R(ICON_PIN)))
 	
 	oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
 	oc.add(DirectoryObject(key = Callback(DefineAccessControl, title='Access Control'), title = 'Access Control', summary='Set/Remove Temporary Access', thumb = R(ICON_LOCK)))
 	
-	if not Prefs['show_adult'] and Dict['AccessPin'] != Prefs['access_pin']:
-		oc.add(DirectoryObject(key = Callback(NoAccess), title = 'Update Plugin', thumb = R(ICON_UPDATE)))
+	if updater.update_available()[0]:
+		oc.add(DirectoryObject(key = Callback(UpdateCheck), title = 'Update (New Available)', thumb = R(ICON_UPDATE_NEW)))
 	else:
+		oc.add(DirectoryObject(key = Callback(UpdateCheck), title = 'Update (Running Latest)', thumb = R(ICON_UPDATE)))
+	
+	return oc
+	
+@route(PREFIX + "/updatecheck")
+def UpdateCheck():
+	oc = ObjectContainer(title2='Update')
+	if VerifyAccess():
 		if updater.update_available()[0]:
 			oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update (New Available)', thumb = R(ICON_UPDATE_NEW)))
 		else:
 			oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update (Running Latest)', thumb = R(ICON_UPDATE)))
+	else:
+		if updater.update_available()[0]:
+			oc.add(DirectoryObject(key = Callback(NoAccess), title = 'Update (New Available)', thumb = R(ICON_UPDATE_NEW)))
+		else:
+			oc.add(DirectoryObject(key = Callback(NoAccess), title = 'Update (Running Latest)', thumb = R(ICON_UPDATE)))
 	return oc
+	
+@route(PREFIX + "/verifyaccess")
+def VerifyAccess():
+	if not Prefs['show_adult'] and Dict['AccessPin'] != Prefs['access_pin']:
+		return False
+	else:
+		return True
 	
 @route(PREFIX + "/defineaccesscontrol")
 def DefineAccessControl(title):
@@ -129,7 +118,7 @@ def DefineAccessControl(title):
 	oc.add(DirectoryObject(key = Callback(ClearAccessKey), thumb = R(ICON_LOCK), title='Clear Access Key', summary='Clear Temporary Access Key'))
 	return oc
 	
-@route(PREFIX + "/settemppin")
+@route(PREFIX + "/settempkey")
 def SetTempKey(query):
 	Dict['items_dict'] = {}
 	Dict['AccessPin'] = query;
@@ -138,7 +127,7 @@ def SetTempKey(query):
 
 @route(PREFIX + "/noaccess")
 def NoAccess():
-	return ObjectContainer(header='Update Plugin', message='Please Enable Access via Access Control')
+	return ObjectContainer(header='Update Plugin', message='Requires Parental Access Control. Enable via Channel Preferences or set under Access Control Menu first.')
 	
 @route(PREFIX + "/clearaccesskey")
 def ClearAccessKey():
@@ -146,8 +135,7 @@ def ClearAccessKey():
 	Dict['AccessPin'] = '';
 	Dict.Save()
 	return ObjectContainer(header='Access Key', message='Your Temporary Access Key has been cleared.')
-
-
+	
 @route(PREFIX + "/showMenu")
 def ShowMenu(title):
 
@@ -160,177 +148,117 @@ def ShowMenu(title):
 	oc.add(DirectoryObject(key = Callback(DisplayList, title='List View'), title = 'List View', thumb = R(ICON_LISTVIEW)))
 	oc.add(DirectoryObject(key = Callback(DisplayPage, title='Page View', iRange=0), title = 'Page View', thumb = R(ICON_PAGE)))
 	oc.add(DirectoryObject(key = Callback(DisplayPageList, title='Page List'), title = 'Page List', thumb = R(ICON_PAGELIST)))
-	if Dict['NewRetMethod'] != 'N':
-		oc.add(DirectoryObject(key = Callback(DisplayGenreMenu, title='Genres'), title = 'Genres', thumb = R(ICON_GENRES)))
+	oc.add(DirectoryObject(key = Callback(DisplayGenreMenu, title='Genres'), title = 'Genres', thumb = R(ICON_GENRES)))
+	oc.add(DirectoryObject(key = Callback(ShowRecentMenu, title='Recent'), title = 'Recent', thumb = R(ICON_RECENT)))
 	oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH_QUEUE)))
 	oc.add(DirectoryObject(key = Callback(Bookmarks, title='My Channel Bookmarks'), title = 'My Channel Bookmarks', thumb = R(ICON_BOOKMARK)))
-	oc.add(DirectoryObject(key = Callback(RefreshListing1, doRefresh=True), title = 'Refresh Channels', thumb = R(ICON)))
-	oc.add(DirectoryObject(key = Callback(RefreshListing2, doRefresh=True), title = 'Refresh Beta Channels', thumb = R(ICON)))
+	oc.add(DirectoryObject(key = Callback(RefreshListing, doRefresh=True), title = 'Refresh Channels', thumb = R(ICON)))
 	
 	return oc
 	
-@route(PREFIX + "/refreshlisting")
-def RefreshListing(doRefresh):
+@route(PREFIX + "/showRecentMenu")
+def ShowRecentMenu(title):
 
-	Dict['items_dict'] = {}
+	oc = ObjectContainer(title2=title)
+	
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+
+	oc.add(DirectoryObject(key = Callback(RecentListing, title='Today'), title = 'Today', thumb = R(ICON_RECENT)))
+	oc.add(DirectoryObject(key = Callback(RecentListing, title='Since Yesterday'), title = 'Since Yesterday', thumb = R(ICON_RECENT)))
+	oc.add(DirectoryObject(key = Callback(RecentListing, title='Last 7 Days'), title = 'Last 7 Days', thumb = R(ICON_RECENT)))
+	
+	return oc
+	
+@route(PREFIX + "/RecentListing")
+def RecentListing(title):
+	oc = ObjectContainer(title2=title)
+	
+	filterD = DT.date.today()
+	if title == 'Since Yesterday':
+		filterD = filterD - DT.timedelta(days=2)
+	elif title == 'Last 7 Days':
+		filterD = filterD - DT.timedelta(days=7)
+	filterDate = datetime.combine(filterD, datetime.min.time())
+	
+	abortBool = RefreshListing(False)
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	if Client.Platform not in LIST_VIEW_CLIENTS:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+	else:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
 	
 	try:
-		if Dict['NewRetMethod'] == 'N':
-			return RefreshListing1(doRefresh)
-		else:
-			return RefreshListing2(doRefresh)
+		for count in range(0,len(Dict['items_dict'])):
+			
+			channelNum = Dict['items_dict'][count]['channelNum']
+			channelDesc = Dict['items_dict'][count]['channelDesc']
+			channelUrl = Dict['items_dict'][count]['channelUrl']
+			dateStr = Dict['items_dict'][count]['channelDate']
+			dateStrA = dateStr.split('/')
+			dateObj = datetime(int(dateStrA[2]), int(dateStrA[0]), int(dateStrA[1]))
+			
+			title = unicode('Channel: ' + channelNum + ' (' + channelDesc + ')')
+			
+			desc = 'Unknown'
+			country = 'Unknown'
+			lang = 'Unknown'
+			genre = 'Unknown'
+			views = 'Unknown'
+			active = 'Unknown'
+			onair = 'Unknown'
+			mature = 'Unknown'
+			
+			try:
+				mature = Dict['items_dict'][count]['mature']
+				desc = Dict['items_dict'][count]['desc']
+				country = Dict['items_dict'][count]['country']
+				lang = Dict['items_dict'][count]['lang']
+				genre = Dict['items_dict'][count]['genre']
+				views = Dict['items_dict'][count]['views']
+				active = Dict['items_dict'][count]['active']
+				onair = Dict['items_dict'][count]['onair']
+			except:
+				pass
+			
+			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
+			
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+				
+			#Log("Date===========  " + dateStr + " = " + str(dateObj) + " = " + str(filterDate))
+				
+			if not abortBool2 and dateObj >= filterDate:
+				if Client.Platform not in LIST_VIEW_CLIENTS:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
+				else:
+					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
+			
+		abortBool = False	
 	except:
-		return False
+		abortBool = True
 	
-@route(PREFIX + "/refreshlisting1")
-def RefreshListing1(doRefresh):
-	Dict['NewRetMethod'] = 'N'
-	Dict.Save()
+	if abortBool:
+		return ObjectContainer(header=title, message='No Channels Available. Please check website URL under Channel Preferences !')
+		
+	if Prefs['use_datesort']:
+		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
+	return oc
+
+@route(PREFIX + "/refreshlisting")
+def RefreshListing(doRefresh):
 	
 	abortBool = True
-	webUrl = Prefs['web_url']
-
-	if webUrl <> None and webUrl.startswith('http'):
-		if Dict['items_dict'] <> {} and not doRefresh:
-			return False
-		BASE_URL = webUrl + DEV_URL
-		try:
-			Dict['items_dict'] = {}
-			page_data = HTTP.Request(BASE_URL).content
-			page_elems = HTML.ElementFromString(page_data)
-			page_data = ''
-			
-			fetch_urls = page_elems.xpath(".//div[@class='table-title']//div[@class='ch-names']//script//@src")
-			fetch_urls = list(set(fetch_urls))
-			for eachFetchUrl in fetch_urls:
-				eachFetchUrl = GetRedirector(eachFetchUrl)
-				bool = True
-				for name in DISABLED_NAMES:
-					if name in eachFetchUrl:
-						bool = False
-						break
-				
-					#Log("eachFetchUrl------------- " + eachFetchUrl)
-					try:
-						page_data_r = HTTP.Request(eachFetchUrl).content
-						if '<html>' not in page_data_r or '<head>' not in page_data_r:
-							page_data = page_data + '\n' + page_data_r
-					except:
-						page_data_r = ''
-			
-			#page_data = filter(lambda x: not re.match(r'^\s*$', x), page_data)
-			page_data = page_data.replace('(','')
-			page_data = page_data.replace(')','')
-			page_data = page_data.replace('"','')
-			page_data = page_data.replace('.','')
-			page_data = page_data.replace('=','')
-			#Log(page_data)
-			
-			channels = page_elems.xpath(".//table[@class='list']//tr")
-			count = 0
-			
-			today = DT.date.today()
-			week_ago = today - DT.timedelta(days=7)
-			
-			for eachCh in channels:
-				channelNum = ' '
-				channelUrl = ' '
-				channelDesc = ' '
-				try:
-					channelNum = eachCh.xpath(".//td[@class='text-center']//a//text()")[0]
-					channelUrl = eachCh.xpath(".//td[@class='text-left']//a//@href")[0]
-				except:
-					pass
-				try:
-					# primary method
-					channelId0 = eachCh.xpath(".//td[@class='text-left']//a//@href")[0].split('/')
-					channelId = channelId0[len(channelId0)-1]
-					srcStr = 'documentgetElementById'+channelId+'textContent'
-					#Log("srcStr----------" + srcStr)
-				except:
-					pass
-					
-				try:
-					# secondary method
-					# fix for chs 176 - 282
-					channelId = eachCh.xpath(".//td[@class='text-left']//a//@id")[0]
-					srcStr = 'documentgetElementById'+channelId+'textContent'
-					#Log("srcStr----------" + srcStr)
-				except:
-					pass
-					
-				try:
-					channelDesc = eachCh.xpath(".//td[@class='text-left']//a//text()")[0]
-				except:
-					pass
-
-				try:
-					channelDesc = re.findall(srcStr+'(.*?);', page_data, re.S)[0]
-					#Log("channelDesc----------" + channelDesc)
-				except:
-					pass
-					
-				desc = 'Unknown'
-				country = 'Unknown'
-				lang = 'Unknown'
-				genre = 'Unknown'
-				views = 'Unknown'
-				active = 'Unknown'
-				onair = 'Unknown'
-				
-				try:
-					desc = eachCh.xpath(".//td[@class='text-left']//div[@class='desc']//@value")[0]
-					country = eachCh.xpath(".//td[@class='text-left']//div[@class='country']//@value")[0]
-					lang = eachCh.xpath(".//td[@class='text-left']//div[@class='lang']//@value")[0]
-					genre = eachCh.xpath(".//td[@class='text-left']//div[@class='genre']//@value")[0]
-					views = eachCh.xpath(".//td[@class='text-left']//div[@class='views']//@value")[0]
-					active = eachCh.xpath(".//td[@class='text-left']//div[@class='active']//@value")[0]
-					onair = eachCh.xpath(".//td[@class='text-left']//div[@class='onair']//@value")[0]
-				except:
-					pass
-				
-				if channelDesc == None or channelDesc == 'Loading...' or channelDesc == ' ' or channelDesc == '':
-					channelDesc = unicode('Undefined Channel: ' + channelNum)
-					
-				#Log("channelDesc----------" + channelDesc)
-				# get update date and used DirectoryObject tagline for sort feature
-				dateStr = ' '
-				try:
-					dateStr = getDate(channelDesc,week_ago)
-				except:
-					pass
-					
-				mature = 'N'
-				try:
-					mature = isAdultChannel(channelDesc)
-				except:
-					pass
-				
-				try:
-					Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr, 'desc': desc, 'country': country, 'lang': lang, 'genre': genre, 'views': views, 'active': active, 'onair': onair, 'mature': mature}
-					count = count + 1
-				except:
-					pass
-				
-			abortBool = False
-			if doRefresh:
-				return ObjectContainer(header='Refresh Successful', message='New Channel listing retrieved !')
-		except:
-			BASE_URL = ""
-			abortBool = True
-
-	if doRefresh:
-		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !')		
-	return abortBool
-	
-@route(PREFIX + "/refreshlisting2")
-def RefreshListing2(doRefresh):
-	Dict['NewRetMethod'] = 'Y'
-	#Dict.Save()
-	
-	abortBool = True
-	webUrl = 'http://pastebin.com/raw.php?i=KzhgEVju'
+	BASE_URL = Prefs['web_url']
+	try:
+		webUrl = GetChannelLinkUrl(BASE_URL)
+		if webUrl == "":
+			webUrl = 'http://pastebin.com/raw.php?i=KzhgEVju'
+	except:
+		webUrl = 'http://pastebin.com/raw.php?i=KzhgEVju'
 
 	if webUrl <> None and webUrl.startswith('http'):
 		if Dict['items_dict'] <> {} and not doRefresh:
@@ -347,6 +275,7 @@ def RefreshListing2(doRefresh):
 			del GENRE_ARRAY[:]
 			
 			for eachCh in channels:
+				skip = False
 				if eachCh.startswith('//'):
 					pass
 				else:
@@ -368,6 +297,7 @@ def RefreshListing2(doRefresh):
 						if chMeta[1] <> None:
 							if 'Help' in chMeta[1] and 'IPTV' in chMeta[1]:
 								channelDesc = ' '
+								skip = True
 							else:
 								channelDesc = chMeta[1]
 						if chMeta[2] <> None:
@@ -408,8 +338,9 @@ def RefreshListing2(doRefresh):
 							mature = 'Y'
 					
 					try:
-						Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr, 'desc': desc, 'country': country, 'lang': lang, 'genre': genre, 'views': views, 'active': active, 'onair': onair, 'mature': mature}
-						count = count + 1
+						if not skip:
+							Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr, 'desc': desc, 'country': country, 'lang': lang, 'genre': genre, 'views': views, 'active': active, 'onair': onair, 'mature': mature}
+							count = count + 1
 					except:
 						pass
 				
@@ -423,6 +354,15 @@ def RefreshListing2(doRefresh):
 	if doRefresh:
 		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !')		
 	return abortBool	
+
+@route(PREFIX + "/channellinkurl")	
+def GetChannelLinkUrl(siteUrl):
+
+	try:
+		html = HTML.ElementFromURL(siteUrl)
+		return html.xpath("//div[@class='chNames']//@href")[0]
+	except:
+		return ""
 	
 @route(PREFIX + "/displaylist")
 def DisplayList(title):
@@ -501,6 +441,8 @@ def DisplayGenreMenu(title):
 				oc.add(DirectoryObject(key = Callback(DisplayGenreSort, titleGen=genre), title = genre, thumb = R(ICON_GENRE)))
 		else:
 			oc.add(DirectoryObject(key = Callback(DisplayGenreSort, titleGen=genre), title = genre, thumb = R(ICON_GENRE)))
+			
+	oc.objects.sort(key=lambda obj: obj.title)
 	return oc
 	
 @route(PREFIX + "/displaygenresort")
@@ -674,7 +616,7 @@ def DisplayPageList(title):
 	
 @route(PREFIX + '/getdate')
 def getDate(channelDesc,week_ago):
-	dateStr = 'Undefined'
+	dateStr = str(week_ago.month) + '/' + str(week_ago.day) + '/' + str(week_ago.year)
 	
 	# tricky keep in seperate try
 	try:
@@ -705,7 +647,7 @@ def getDate(channelDesc,week_ago):
 		else:
 			dateStr = dateStr + '/' + str(week_ago.year)
 	except:
-		dateStr = 'Undefined'
+		dateStr = str(week_ago.month) + '/' + str(week_ago.day) + '/' + str(week_ago.year)
 		
 	#Log("dateStr----------" + dateStr)
 	return dateStr
