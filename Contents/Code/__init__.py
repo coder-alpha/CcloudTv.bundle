@@ -178,7 +178,7 @@ def RecentListing(title):
 	
 	filterD = DT.date.today()
 	if title == 'Since Yesterday':
-		filterD = filterD - DT.timedelta(days=2)
+		filterD = filterD - DT.timedelta(days=1)
 	elif title == 'Last 7 Days':
 		filterD = filterD - DT.timedelta(days=7)
 	filterDate = datetime.combine(filterD, datetime.min.time())
@@ -716,7 +716,7 @@ def GetChannelThumb(url):
 			page = HTTP.Request(url).content
 			if 'html' not in page and 'div' not in page and '#EXTM3U' in page:
 				thumb = R(ICON_VIDEO)
-		elif '.m3u' in url:
+		elif '.m3u' in url or '.mp4' in url:
 			thumb = R(ICON_VIDEO)
 		elif '.aac' in url or '.mp3' in url:
 			thumb = R(ICON_AUDIO)
@@ -763,7 +763,7 @@ def GetRedirector(url):
 
 	redirectUrl = url
 	try:
-		if '.m3u8' not in url and '.mp3' not in url and '.aac' not in url and '.m3u' not in url:
+		if '.m3u8' not in url and '.mp3' not in url and '.aac' not in url and '.m3u' not in url and '.mp4' not in url:
 			page = urllib.urlopen(url)
 			redirectUrl = page.geturl()
 	except:
@@ -823,6 +823,13 @@ def CreateVideoClipObject(url, title, thumb, summary, inc_container = False):
 					audio_channels = 2
 				)
 			]
+		)
+	elif '.mp4' in url:
+		vco = VideoClipObject(
+			url = url + '&' + title,
+			title = title,
+			thumb = thumb,
+			summary = summary
 		)
 	else:	
 		vco = VideoClipObject(
@@ -1267,3 +1274,5 @@ def Pins(title):
 	
 	oc.objects.sort(key=lambda obj: obj.title)
 	return oc
+
+####################################################################################################
