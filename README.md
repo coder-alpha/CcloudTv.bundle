@@ -50,6 +50,6 @@ Acknowledgements
 ==============
 
 - Credits to [cCloud TV BETA | Popcorntime for LIVE TV an open source project] (https://github.com/imbane/imbane.github.io)
-- Credits to [Cigaras, Valdas Vaitiekaitis] (https://forums.plex.tv/discussion/168305/iptv-plugin/p1): IPTV (This plugins uses some parts)
+- Credits to [Cigaras, Valdas Vaitiekaitis] (https://forums.plex.tv/discussion/83083/rel-iptv-bundle-plugin-that-plays-iptv-streams-from-a-m3u-playlist/p1): IPTV (This plugins uses some parts)
 - Credits to [SharkOne] (http://forums.plex.tv/discussion/102253/rel-bittorrent-channel/p1): (Some parts of Channel updater)
 - Credits to [zombian] (http://forums.plex.tv/profile/zombian) for plugin icons

@@ -824,9 +824,9 @@ def CreateVideoClipObject(url, title, thumb, summary, inc_container = False):
 				)
 			]
 		)
-	elif '.mp4' in url:
+	elif '.mp4' in url and '.m3u8' not in url:
 		vco = VideoClipObject(
-			url = url + '&' + title,
+			url = url + '&&&' + title,
 			title = title,
 			thumb = thumb,
 			summary = summary
