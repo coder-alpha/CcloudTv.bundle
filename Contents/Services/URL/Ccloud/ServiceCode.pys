@@ -1,0 +1,42 @@
+IMDB_URL = 'http://www.imdb.com/xml/find?json=1&nr=1&tt=on&q='
+
+####################################################################################################
+def NormalizeURL(url):
+
+	return url
+
+####################################################################################################
+def MetadataObjectForURL(url):
+
+	splitContent = url.split('&')
+	title = splitContent[1]
+	#json = JSON.ObjectFromURL(IMDB_URL + title)
+
+	return VideoClipObject(
+		title = title
+	)
+
+####################################################################################################
+def MediaObjectsForURL(url):
+	
+	splitContent = url.split('&')
+	url = splitContent[0]
+	
+	return [
+		MediaObject(
+			container = Container.MP4,
+			video_codec = VideoCodec.H264,
+			audio_codec = AudioCodec.AAC,
+			audio_channels = 2,
+			optimized_for_streaming = True,
+			parts = [PartObject(key=Callback(PlayVideo, url=url))]
+		)
+	]
+
+####################################################################################################
+@indirect
+def PlayVideo(url):
+
+	return IndirectResponse(VideoClipObject, key=url)
+
+
