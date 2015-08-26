@@ -4,6 +4,7 @@
 #
 ######################################################################################
 import re, urllib, common, updater
+import myxmltvparser
 import datetime as DT
 from datetime import datetime
 
@@ -44,7 +45,11 @@ LIST_VIEW_CLIENTS = ['Android','iOS']
 # genre listing
 GENRE_ARRAY = []
 
+GENRE_SYNM_SPORTS = ['Sport']
+GENRE_SYNM_ENTERTAINMENT = ['Entertainemt']
+GENRE_SYNM_ENTERTAINMENT_NEWS = ['Entertainemt/News']
 
+FALLBACK_STATIC_DB_URL = 'https://raw.githubusercontent.com/githamtv/githamtv.github.io/master/ch/v/__server_master_file_mirror.txt'
 
 ######################################################################################
 
@@ -157,6 +162,145 @@ def ShowMenu(title):
 	
 	return oc
 	
+@route(PREFIX + "/refreshlisting")
+def RefreshListing(doRefresh):
+	
+	abortBool = True
+	webUrl = Prefs['web_url']
+	try:
+		if 'http' not in webUrl:
+			webUrl = FALLBACK_STATIC_DB_URL
+			
+		webUrl = GetRedirector(webUrl)
+		page_data = HTTP.Request(webUrl).content
+		
+		if '.m3u8' in page_data:
+			pass
+		else:
+			webUrl = FALLBACK_STATIC_DB_URL
+	except:
+		webUrl = FALLBACK_STATIC_DB_URL
+		
+	try:
+		webUrl = GetRedirector(webUrl)
+	except:
+		pass
+		
+	XML_SOURCE = ""
+	try:
+		if Prefs['use_epg'] and not Prefs['epg_guide'].startswith('http://'):
+			XML_URL = Resource.Load(Prefs['epg_guide'], binary = True)
+			XML_SOURCE = HTML.ElementFromURL(XML_URL)
+			myxmltvparser.initchannels(XML_SOURCE)
+	except:
+		pass
+		
+	if webUrl <> None and webUrl.startswith('http'):
+		if Dict['items_dict'] <> {} and not doRefresh:
+			return False
+		try:
+			Dict['items_dict'] = {}
+			page_data = HTTP.Request(webUrl).content
+			page_data = page_data.strip()
+			channels = page_data.split('||')
+
+			count = 0
+			now = str(datetime.now()).replace(':','').replace('-','').replace(' ', '')[0:14]
+			today = DT.date.today()
+			week_ago = today - DT.timedelta(days=7)
+			del GENRE_ARRAY[:]
+			
+			for eachCh in channels:
+				skip = False
+				if eachCh.startswith('//'):
+					pass
+				else:
+					chMeta = eachCh.split(';')
+					channelNum = ' '
+					channelUrl = ' '
+					channelDesc = ' '
+					desc = 'Unknown'
+					country = 'Unknown'
+					lang = 'Unknown'
+					genre = 'Unknown'
+					views = 'Unknown'
+					active = 'Unknown'
+					onair = 'Unknown'
+					channelID = 'Unknown'
+					
+					try:
+						if chMeta[0] <> None:
+							channelNum = chMeta[0].strip()
+							if channelNum == '!':
+								channelNum = '00'
+							#channelNum = "{0:0=4d}".format(int(channelNum))
+						if chMeta[1] <> None:
+							if 'Help' in chMeta[1] and 'IPTV' in chMeta[1]:
+								channelDesc = ' '
+								skip = True
+							else:
+								channelDesc = unicode(chMeta[1])
+						if chMeta[2] <> None:
+							genre = chMeta[2].strip()
+							genre = FixGenre(genre)
+							if genre in GENRE_ARRAY:
+								pass
+							elif genre != '!':
+								GENRE_ARRAY.append(genre)
+						if chMeta[3] <> None:
+							country = chMeta[3]
+						if chMeta[4] <> None:
+							lang = chMeta[4]
+						if chMeta[5] <> None:
+							channelUrl = chMeta[5]
+						desc = channelDesc
+					except:
+						pass
+					
+					if channelDesc == None or channelDesc == 'Loading...' or channelDesc == ' ' or channelDesc == '':
+						channelDesc = unicode('Undefined Channel: ' + channelNum)
+					
+					if Prefs['use_epg']:
+						epgInfo = myxmltvparser.epgguide(channelID, now)
+					else:
+						epgInfo = 'EPG Not Yet Implemented'
+						
+					#Log("channelDesc----------" + channelDesc)
+					# get update date and used DirectoryObject tagline for sort feature
+					dateStr = ' '
+					try:
+						dateStr = getDate(channelDesc,week_ago)
+					except:
+						pass
+						
+					mature = 'N'
+					try:
+						mature = isAdultChannel(channelDesc)
+					except:
+						pass
+						
+					if mature == 'N':
+						if genre == 'Adult':
+							mature = 'Y'
+					
+					try:
+						if not skip:
+							Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr, 'desc': desc, 'country': country, 'lang': lang, 'genre': genre, 'views': views, 'active': active, 'onair': onair, 'mature': mature, 'epg': epgInfo}
+							count = count + 1
+					except:
+						pass
+				
+			abortBool = False
+			if doRefresh:
+				return ObjectContainer(header='Refresh Successful', message='New Channel listing retrieved !')
+		except:
+			BASE_URL = ""
+			abortBool = True
+
+	if doRefresh:
+		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !')		
+	return abortBool
+	
 @route(PREFIX + "/showRecentMenu")
 def ShowRecentMenu(title):
 
@@ -247,122 +391,6 @@ def RecentListing(title):
 	if Prefs['use_datesort']:
 		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
 	return oc
-
-@route(PREFIX + "/refreshlisting")
-def RefreshListing(doRefresh):
-	
-	abortBool = True
-	BASE_URL = Prefs['web_url']
-	try:
-		webUrl = GetChannelLinkUrl(BASE_URL)
-		if webUrl == "":
-			webUrl = 'http://pastebin.com/raw.php?i=KzhgEVju'
-	except:
-		webUrl = 'http://pastebin.com/raw.php?i=KzhgEVju'
-
-	if webUrl <> None and webUrl.startswith('http'):
-		if Dict['items_dict'] <> {} and not doRefresh:
-			return False
-		try:
-			Dict['items_dict'] = {}
-			page_data = HTTP.Request(webUrl).content
-			page_data = page_data.strip()
-			channels = page_data.split('||')
-
-			count = 0
-			today = DT.date.today()
-			week_ago = today - DT.timedelta(days=7)
-			del GENRE_ARRAY[:]
-			
-			for eachCh in channels:
-				skip = False
-				if eachCh.startswith('//'):
-					pass
-				else:
-					chMeta = eachCh.split(';')
-					channelNum = ' '
-					channelUrl = ' '
-					channelDesc = ' '
-					desc = 'Unknown'
-					country = 'Unknown'
-					lang = 'Unknown'
-					genre = 'Unknown'
-					views = 'Unknown'
-					active = 'Unknown'
-					onair = 'Unknown'
-					
-					try:
-						if chMeta[0] <> None:
-							channelNum = chMeta[0].strip()
-						if chMeta[1] <> None:
-							if 'Help' in chMeta[1] and 'IPTV' in chMeta[1]:
-								channelDesc = ' '
-								skip = True
-							else:
-								channelDesc = chMeta[1]
-						if chMeta[2] <> None:
-							genre = chMeta[2]
-							if genre in GENRE_ARRAY:
-								pass
-							else:
-								GENRE_ARRAY.append(genre)
-						if chMeta[3] <> None:
-							country = chMeta[3]
-						if chMeta[4] <> None:
-							lang = chMeta[4]
-						if chMeta[5] <> None:
-							channelUrl = chMeta[5]
-						desc = channelDesc
-					except:
-						pass
-					
-					if channelDesc == None or channelDesc == 'Loading...' or channelDesc == ' ' or channelDesc == '':
-						channelDesc = unicode('Undefined Channel: ' + channelNum)
-						
-					#Log("channelDesc----------" + channelDesc)
-					# get update date and used DirectoryObject tagline for sort feature
-					dateStr = ' '
-					try:
-						dateStr = getDate(channelDesc,week_ago)
-					except:
-						pass
-						
-					mature = 'N'
-					try:
-						mature = isAdultChannel(channelDesc)
-					except:
-						pass
-						
-					if mature == 'N':
-						if genre == 'Adult':
-							mature = 'Y'
-					
-					try:
-						if not skip:
-							Dict['items_dict'][count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr, 'desc': desc, 'country': country, 'lang': lang, 'genre': genre, 'views': views, 'active': active, 'onair': onair, 'mature': mature}
-							count = count + 1
-					except:
-						pass
-				
-			abortBool = False
-			if doRefresh:
-				return ObjectContainer(header='Refresh Successful', message='New Channel listing retrieved !')
-		except:
-			BASE_URL = ""
-			abortBool = True
-
-	if doRefresh:
-		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !')		
-	return abortBool	
-
-@route(PREFIX + "/channellinkurl")	
-def GetChannelLinkUrl(siteUrl):
-
-	try:
-		html = HTML.ElementFromURL(siteUrl)
-		return html.xpath("//div[@class='chNames']//@href")[0]
-	except:
-		return ""
 	
 @route(PREFIX + "/displaylist")
 def DisplayList(title):
@@ -399,6 +427,8 @@ def DisplayList(title):
 			active = 'Unknown'
 			onair = 'Unknown'
 			mature = 'Unknown'
+			epgInfo = ''
+			
 			try:
 				mature = Dict['items_dict'][count]['mature']
 				desc = Dict['items_dict'][count]['desc']
@@ -408,12 +438,15 @@ def DisplayList(title):
 				views = Dict['items_dict'][count]['views']
 				active = Dict['items_dict'][count]['active']
 				onair = Dict['items_dict'][count]['onair']
+				epgInfo = Dict['items_dict'][count]['epg']
 			except:
 				pass
 			
 			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
 			
-			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang
+			if epgInfo != '':
+				summaryStr = summaryStr + ' | ' + epgInfo
 				
 			if not abortBool2:
 				if Client.Platform not in LIST_VIEW_CLIENTS:
@@ -479,6 +512,7 @@ def DisplayGenreSort(titleGen):
 			active = 'Unknown'
 			onair = 'Unknown'
 			mature = 'Unknown'
+			epgInfo = ''
 			try:
 				mature = Dict['items_dict'][count]['mature']
 				desc = Dict['items_dict'][count]['desc']
@@ -488,12 +522,15 @@ def DisplayGenreSort(titleGen):
 				views = Dict['items_dict'][count]['views']
 				active = Dict['items_dict'][count]['active']
 				onair = Dict['items_dict'][count]['onair']
+				epgInfo = Dict['items_dict'][count]['epg']
 			except:
 				pass
 			
 			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
 			
-			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang
+			if epgInfo != '':
+				summaryStr = summaryStr + ' | ' + epgInfo
 				
 			if not abortBool2 and titleGen == genre:
 				if Client.Platform not in LIST_VIEW_CLIENTS:
@@ -548,6 +585,8 @@ def DisplayPage(title, iRange):
 			active = 'Unknown'
 			onair = 'Unknown'
 			mature = 'Unknown'
+			epgInfo = ''
+			
 			try:
 				mature = Dict['items_dict'][count]['mature']
 				desc = Dict['items_dict'][count]['desc']
@@ -557,13 +596,16 @@ def DisplayPage(title, iRange):
 				views = Dict['items_dict'][count]['views']
 				active = Dict['items_dict'][count]['active']
 				onair = Dict['items_dict'][count]['onair']
+				epgInfo = Dict['items_dict'][count]['epg']
 			except:
 				pass
 			
 			#Log("mature -----------------" + mature)
 			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
 			
-			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang
+			if epgInfo != '':
+				summaryStr = summaryStr + ' | ' + epgInfo
 			
 			if not abortBool2:
 				if Client.Platform not in LIST_VIEW_CLIENTS:
@@ -898,6 +940,7 @@ def GetVideoURL(url, live):
 def PlayVideoLive(url):
 
 	return HTTPLiveStreamURL(url=url)
+	
 ####################################################################################################
 @route(PREFIX + "/search")
 def Search(query):
@@ -940,6 +983,8 @@ def Search(query):
 			active = 'Unknown'
 			onair = 'Unknown'
 			mature = 'Unknown'
+			epgInfo = ''
+			
 			try:
 				mature = Dict['items_dict'][count]['mature']
 				desc = Dict['items_dict'][count]['desc']
@@ -949,12 +994,15 @@ def Search(query):
 				views = Dict['items_dict'][count]['views']
 				active = Dict['items_dict'][count]['active']
 				onair = Dict['items_dict'][count]['onair']
+				epgInfo = Dict['items_dict'][count]['epg']
 			except:
 				pass
 			
 			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature)
 			
-			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+			summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang
+			if epgInfo != '':
+				summaryStr = summaryStr + ' | ' + epgInfo
 			
 			if not abortBool2 and query.lower() in channelDesc.lower() or query == channelNum:
 				oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
@@ -1049,6 +1097,7 @@ def Bookmarks(title):
 				lang = 'Unknown'
 				genre = 'Unknown'
 				views = 'Unknown'
+				epgInfo = ''
 				
 				try:
 					desc = Dict['items_dict'][x]['desc']
@@ -1056,10 +1105,13 @@ def Bookmarks(title):
 					lang = Dict['items_dict'][x]['lang']
 					genre = Dict['items_dict'][x]['genre']
 					views = Dict['items_dict'][x]['views']
+					epgInfo = Dict['items_dict'][x]['epg']
 				except:
 					pass
 				
-				summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+				summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang
+				if epgInfo != '':
+					summaryStr = summaryStr + ' | ' + epgInfo
 				
 				mature = 'N'
 				try:
@@ -1234,17 +1286,20 @@ def Pins(title):
 				lang = 'Unknown'
 				genre = 'Unknown'
 				views = 'Unknown'
-				
+				epgInfo = ''
 				try:
 					desc = Dict['items_dict'][x]['desc']
 					country = Dict['items_dict'][x]['country']
 					lang = Dict['items_dict'][x]['lang']
 					genre = Dict['items_dict'][x]['genre']
 					views = Dict['items_dict'][x]['views']
+					epgInfo = Dict['items_dict'][x]['epg']
 				except:
 					pass
 				
-				summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
+				summaryStr = desc + ' | Genre:' + genre + ' | Country:' + country + ' | Language:' + lang
+				if epgInfo != '':
+					summaryStr = summaryStr + ' | ' + epgInfo
 				
 				mature = 'N'
 				try:
@@ -1275,4 +1330,18 @@ def Pins(title):
 	oc.objects.sort(key=lambda obj: obj.title)
 	return oc
 
+######################################################################################
+# Fix Genre
+@route(PREFIX + "/fixgenre")	
+def FixGenre(genre):
+
+	if genre in GENRE_SYNM_SPORTS:
+		genre = 'Sports'
+	elif genre in GENRE_SYNM_ENTERTAINMENT:
+		genre = 'Entertainment'
+	elif genre in GENRE_SYNM_ENTERTAINMENT_NEWS:
+		genre = 'Entertainment/News'
+	
+	return genre
+	
 ####################################################################################################

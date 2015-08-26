@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<tv generator-info-name="Template - WebGrab+Plus/w MDB &amp; REX Postprocess -- version 1.54.6/0.01 -- Jan van Straaten" generator-info-url="http://www.webgrabplus.com">
+  <channel id="ABC">
+    <display-name lang="en">ABC</display-name>
+    <url>http://www.tvguide.com</url>
+  </channel>
+  <programme start="20150627103000 +0000" stop="20150627110000 +0000" channel="ABC">
+    <title lang="en">Title</title>
+    <sub-title lang="en">Sub Title</sub-title>
+    <desc lang="en">Description</desc>
+    <date>2013</date>
+    <category lang="en">tvshow</category>
+    <icon src="http://static.tvgcdn.net/rovi/showcards/tvshow/327484/thumbs/16932846_75x100.jpg" />
+    <episode-num system="xmltv_ns">2.3.</episode-num>
+    <previously-shown />
+    <rating system="MPAA">
+      <value>TV-14</value>
+    </rating>
+  </programme>
+</tv>
