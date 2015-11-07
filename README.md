@@ -28,9 +28,9 @@ How To Install
 - Delete any previous versions of this bundle
 - Copy CcloudTv.bundle into the PMS plugins directory under your user account:
 	- Windows 7, Vista, or Server 2008: 
-		C:\Users[Your Username]\AppData\Local\Plex Media Server\Plug-ins
+		C:\Users\[Your Username]\AppData\Local\Plex Media Server\Plug-ins
 	- Windows XP, Server 2003, or Home Server: 
-		C:\Documents and Settings[Your Username]\Local Settings\Application Data\Plex Media Server\Plug-ins
+		C:\Documents and Settings\[Your Username]\Local Settings\Application Data\Plex Media Server\Plug-ins
 	- Mac/Linux: 
         ~/Library/Application Support/Plex Media Server/Plug-ins
 - Restart PMS
@@ -38,7 +38,7 @@ How To Install
 How To Use
 ==============
 
-- Set the cCloud Tv web url before usage without trailing slash under Preferences
+- No configuration required, however, one can set a private database web url under Preferences. Refer Plex forums support thread.
 
 Known Issues
 ==============
