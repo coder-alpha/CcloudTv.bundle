@@ -8,7 +8,7 @@ def NormalizeURL(url):
 ####################################################################################################
 def MetadataObjectForURL(url):
 
-	splitContent = url.split('&&&')
+	splitContent = url.split('cCloudVid')
 	title = splitContent[1]
 	#json = JSON.ObjectFromURL(IMDB_URL + title)
 
@@ -19,7 +19,7 @@ def MetadataObjectForURL(url):
 ####################################################################################################
 def MediaObjectsForURL(url):
 	
-	splitContent = url.split('&&&')
+	splitContent = url.split('cCloudVid')
 	url = splitContent[0]
 	
 	return [
