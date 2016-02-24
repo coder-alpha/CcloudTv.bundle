@@ -1,4 +1,4 @@
-IMDB_URL = 'http://www.imdb.com/xml/find?json=1&nr=1&tt=on&q='
+import base64
 
 ####################################################################################################
 def NormalizeURL(url):
@@ -8,35 +8,52 @@ def NormalizeURL(url):
 ####################################################################################################
 def MetadataObjectForURL(url):
 
-	splitContent = url.split('cCloudVid')
-	title = splitContent[1]
-	#json = JSON.ObjectFromURL(IMDB_URL + title)
-
+	urls = url.split('cCloudVid')
+	furl = (urls[0])
+	title = urls[1]
+	summary = urls[2]
+	thumb = urls[3]
+		
 	return VideoClipObject(
-		title = title
+		title = title,
+		url = furl,
+		summary = summary,
+		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
 	)
 
 ####################################################################################################
 def MediaObjectsForURL(url):
 	
 	splitContent = url.split('cCloudVid')
-	url = splitContent[0]
+	url = base64.b64decode(splitContent[0])
 	
-	return [
-		MediaObject(
-			container = Container.MP4,
-			video_codec = VideoCodec.H264,
-			audio_codec = AudioCodec.AAC,
-			audio_channels = 2,
-			optimized_for_streaming = True,
-			parts = [PartObject(key=Callback(PlayVideo, url=url))]
-		)
-	]
+	if '.flv' in url:
+		return [
+			MediaObject(
+				container = Container.FLV,
+				video_codec = VideoCodec.H264,
+				audio_codec = AudioCodec.AAC,
+				audio_channels = 2,
+				optimized_for_streaming = True,
+				parts = [PartObject(key=Callback(PlayVideo, url=url))]
+			)
+		]	
+	else:
+		return [
+			MediaObject(
+				container = Container.MP4,
+				video_codec = VideoCodec.H264,
+				audio_codec = AudioCodec.AAC,
+				audio_channels = 2,
+				optimized_for_streaming = True,
+				parts = [PartObject(key=Callback(PlayVideo, url=url))]
+			)
+		]
 
 ####################################################################################################
 @indirect
 def PlayVideo(url):
 
+	#return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url))
+		
 	return IndirectResponse(VideoClipObject, key=url)
-
-

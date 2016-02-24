@@ -1,6 +1,6 @@
 ################################################################################
-TITLE = "cCloud TV BETA | Popcorntime for LIVE TV"
-VERSION = '0.17' # Release notation (x.y - where x is major and y is minor)
+TITLE = "cCloud TV | A Community based Social IPTV Service for Live TV, Movies, TV Shows & Radio"
+VERSION = '0.18' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/CcloudTv.bundle'
 PREFIX = "/video/ccloudtv"
 ################################################################################
@@ -61,7 +61,7 @@ COUNTRY_ARRAY_LIST = {'afghanistan': 'af',
  'country name': 'code',
  'croatia': 'hr',
  'cuba': 'cu',
- 'curaçao': 'cw',
+ 'curacao': 'cw',
  'cyprus': 'cy',
  'czech republic': 'cz',
  'cote d\'ivoire': 'ci',
@@ -106,7 +106,6 @@ COUNTRY_ARRAY_LIST = {'afghanistan': 'af',
  'honduras': 'hn',
  'hong kong': 'hk',
  'hungary': 'hu',
- 'iso 3166-2:gb': '(.uk)',
  'iceland': 'is',
  'india': 'in',
  'indonesia': 'id',
@@ -190,8 +189,8 @@ COUNTRY_ARRAY_LIST = {'afghanistan': 'af',
  'russia': 'ru',
  'russian federation': 'ru',
  'rwanda': 'rw',
- 'réunion': 're',
- 'saint barthélemy': 'bl',
+ 'reunion': 're',
+ 'saint barthelemy': 'bl',
  'saint helena, ascension and tristan da cunha': 'sh',
  'saint kitts and nevis': 'kn',
  'saint lucia': 'lc',
@@ -320,7 +319,7 @@ COUNTRY_ARRAY_LIST_SINGLETON = {'afghanistan': 'af',
  'country name': 'code',
  'croatia': 'hr',
  'cuba': 'cu',
- 'curaçao': 'cw',
+ 'curacao': 'cw',
  'cyprus': 'cy',
  'czech republic': 'cz',
  'cote d\'ivoire': 'ci',
@@ -365,7 +364,6 @@ COUNTRY_ARRAY_LIST_SINGLETON = {'afghanistan': 'af',
  'honduras': 'hn',
  'hong kong': 'hk',
  'hungary': 'hu',
- 'iso 3166-2:gb': '(.uk)',
  'iceland': 'is',
  'india': 'in',
  'indonesia': 'id',
@@ -448,8 +446,8 @@ COUNTRY_ARRAY_LIST_SINGLETON = {'afghanistan': 'af',
  'romania': 'ro',
  'russia': 'ru',
  'rwanda': 'rw',
- 'réunion': 're',
- 'saint barthélemy': 'bl',
+ 'reunion': 're',
+ 'saint barthelemy': 'bl',
  'saint helena, ascension and tristan da cunha': 'sh',
  'saint kitts and nevis': 'kn',
  'saint lucia': 'lc',
@@ -516,6 +514,360 @@ COUNTRY_ARRAY_LIST_SINGLETON = {'afghanistan': 'af',
  'zimbabwe': 'zw',
  'aland islands': 'ax'}
  
+COUNTRY_LIST_SINGLETON = ['AD'
+					, 'AE'
+					, 'AF'
+					, 'AG'
+					, 'AI'
+					, 'AL'
+					, 'AM'
+					, 'AO'
+					, 'AQ'
+					, 'AR'
+					, 'AS'
+					, 'AT'
+					, 'AU'
+					, 'AW'
+					, 'AX'
+					, 'AZ'
+					, 'BA'
+					, 'BB'
+					, 'BD'
+					, 'BE'
+					, 'BF'
+					, 'BG'
+					, 'BH'
+					, 'BI'
+					, 'BJ'
+					, 'BL'
+					, 'BM'
+					, 'BN'
+					, 'BO'
+					, 'BQ'
+					, 'BR'
+					, 'BS'
+					, 'BT'
+					, 'BV'
+					, 'BW'
+					, 'BY'
+					, 'BZ'
+					, 'CA'
+					, 'CC'
+					, 'CD'
+					, 'CF'
+					, 'CG'
+					, 'CH'
+					, 'CI'
+					, 'CK'
+					, 'CL'
+					, 'CM'
+					, 'CN'
+					, 'CO'
+					, 'CR'
+					, 'CU'
+					, 'CV'
+					, 'CW'
+					, 'CX'
+					, 'CY'
+					, 'CZ'
+					, 'DE'
+					, 'DJ'
+					, 'DK'
+					, 'DM'
+					, 'DO'
+					, 'DZ'
+					, 'EC'
+					, 'EE'
+					, 'EG'
+					, 'EH'
+					, 'ER'
+					, 'ES'
+					, 'ET'
+					, 'FI'
+					, 'FJ'
+					, 'FK'
+					, 'FM'
+					, 'FO'
+					, 'FR'
+					, 'GA'
+					, 'GB'
+					, 'GD'
+					, 'GE'
+					, 'GF'
+					, 'GG'
+					, 'GH'
+					, 'GI'
+					, 'GL'
+					, 'GM'
+					, 'GN'
+					, 'GP'
+					, 'GQ'
+					, 'GR'
+					, 'GS'
+					, 'GT'
+					, 'GU'
+					, 'GW'
+					, 'GY'
+					, 'HK'
+					, 'HM'
+					, 'HN'
+					, 'HR'
+					, 'HT'
+					, 'HU'
+					, 'ID'
+					, 'IE'
+					, 'IL'
+					, 'IM'
+					, 'IN'
+					, 'IO'
+					, 'IQ'
+					, 'IR'
+					, 'IS'
+					, 'IT'
+					, 'JE'
+					, 'JM'
+					, 'JO'
+					, 'JP'
+					, 'KE'
+					, 'KG'
+					, 'KH'
+					, 'KI'
+					, 'KM'
+					, 'KN'
+					, 'KP'
+					, 'KR'
+					, 'KW'
+					, 'KY'
+					, 'KZ'
+					, 'LA'
+					, 'LB'
+					, 'LC'
+					, 'LI'
+					, 'LK'
+					, 'LR'
+					, 'LS'
+					, 'LT'
+					, 'LU'
+					, 'LV'
+					, 'LY'
+					, 'MA'
+					, 'MC'
+					, 'MD'
+					, 'ME'
+					, 'MF'
+					, 'MG'
+					, 'MH'
+					, 'MK'
+					, 'ML'
+					, 'MM'
+					, 'MN'
+					, 'MO'
+					, 'MP'
+					, 'MQ'
+					, 'MR'
+					, 'MS'
+					, 'MT'
+					, 'MU'
+					, 'MV'
+					, 'MW'
+					, 'MX'
+					, 'MY'
+					, 'MZ'
+					, 'NA'
+					, 'NC'
+					, 'NE'
+					, 'NF'
+					, 'NG'
+					, 'NI'
+					, 'NL'
+					, 'NO'
+					, 'NP'
+					, 'NR'
+					, 'NU'
+					, 'NZ'
+					, 'OM'
+					, 'PA'
+					, 'PE'
+					, 'PF'
+					, 'PG'
+					, 'PH'
+					, 'PK'
+					, 'PL'
+					, 'PM'
+					, 'PN'
+					, 'PR'
+					, 'PS'
+					, 'PT'
+					, 'PW'
+					, 'PY'
+					, 'QA'
+					, 'RE'
+					, 'RO'
+					, 'RS'
+					, 'RU'
+					, 'RW'
+					, 'SA'
+					, 'SB'
+					, 'SC'
+					, 'SD'
+					, 'SE'
+					, 'SG'
+					, 'SH'
+					, 'SI'
+					, 'SJ'
+					, 'SK'
+					, 'SL'
+					, 'SM'
+					, 'SN'
+					, 'SO'
+					, 'SR'
+					, 'SS'
+					, 'ST'
+					, 'SV'
+					, 'SX'
+					, 'SY'
+					, 'SZ'
+					, 'TC'
+					, 'TD'
+					, 'TF'
+					, 'TG'
+					, 'TH'
+					, 'TJ'
+					, 'TK'
+					, 'TL'
+					, 'TM'
+					, 'TN'
+					, 'TO'
+					, 'TR'
+					, 'TT'
+					, 'TV'
+					, 'TW'
+					, 'TZ'
+					, 'UA'
+					, 'UG'
+					, 'UK'
+					, 'UM'
+					, 'US'
+					, 'UY'
+					, 'UZ'
+					, 'VA'
+					, 'VC'
+					, 'VE'
+					, 'VG'
+					, 'VI'
+					, 'VN'
+					, 'VU'
+					, 'WF'
+					, 'WS'
+					, 'YE'
+					, 'YT'
+					, 'ZA'
+					, 'ZM'
+					, 'ZW'] 
+ 
+LANGUAGES_LIST_SINGLETON = ['Akan',
+'Amharic',
+'Arabic',
+'Assamese',
+'Awadhi',
+'Azerbaijani',
+'Balochi',
+'Belarusian',
+'Bengali',
+'Bhojpuri',
+'Burmese',
+'Cantonese',
+'Chewa',
+'Chhattisgarhi',
+'Chittagonian',
+'Croatian',
+'Czech',
+'Deccan',
+'Dhundhari',
+'Dutch',
+'EasternMin',
+'English',
+'French',
+'Fula',
+'GanChinese',
+'German',
+'Greek',
+'Gujarati',
+'HaitianCreole',
+'Hakka',
+'Haryanvi',
+'Hausa',
+'Hebrew',
+'Hiligaynon',
+'Hindi',
+'Hmong',
+'Hungarian',
+'Hunnanese',
+'Igbo',
+'Ilocano',
+'Indonesian',
+'Italian',
+'Japanese',
+'Javanese',
+'Jin',
+'Kannada',
+'Kazakh',
+'Khmer',
+'Kinyarwanda',
+'Kirundi',
+'Konkani',
+'Korean',
+'Kurdish',
+'Madurese',
+'Magahi',
+'Malagasy',
+'Malayalam',
+'Mandarin',
+'Marathi',
+'Marwari',
+'Mossi',
+'Nepali',
+'NorthernMin',
+'Oriya',
+'Oromo',
+'Pashto',
+'Persian',
+'Polish',
+'Portuguese',
+'Punjabi',
+'Quechua',
+'Romanian',
+'Russian',
+'Saraiki',
+'Shona',
+'Sindhi',
+'Sinhalese',
+'Somali',
+'SouthernMin',
+'Spanish',
+'Sundanese',
+'Swedish',
+'Sylheti',
+'Tagalog',
+'Tamil',
+'Telugu',
+'Thai',
+'Turkish',
+'Turkmen',
+'Ukrainian',
+'Urdu',
+'Uyghur',
+'Uzbek',
+'Vietnamese',
+'Visayan',
+'Wu',
+'Xhosa',
+'Yoruba',
+'Zhuang',
+'Zulu']
+
+CATEGORIES_LIST_SINGLETON = ['Documentary','Entertainment','Family','Lifestyle','News','Movie Channels','Music','OnDemandMovies','OnDemandShows','RandomAirTime 24/7','Radio','Sports','Adult','Test']
+  
 def getCountryName(search_code):
 
 	if '/' in search_code:
@@ -539,3 +891,53 @@ def getCountryName(search_code):
 				return country.title()
 		
 		return search_code
+		
+def getCountryCode(search_country):
+
+	if '/' in search_country:
+		str_split = search_country.split('/')
+		ret_str = None
+		for str in str_split:
+			for country, code in COUNTRY_ARRAY_LIST_SINGLETON.iteritems():
+				if country.lower() == str.lower():
+					if ret_str == None:
+						ret_str = code.upper()
+						break
+					else:
+						ret_str = ret_str + '/' + code.upper()
+						break
+		if ret_str == None:
+			ret_str = search_country
+		return ret_str
+	else:
+		for country, code in COUNTRY_ARRAY_LIST_SINGLETON.iteritems():
+			if country.lower() == search_country.lower():
+				return code.upper()
+		
+		return search_country
+		
+def isCountryCodeDefined(search_code):
+
+	for country, code in COUNTRY_ARRAY_LIST_SINGLETON.iteritems():
+		if code == search_code.lower():
+			return True
+	
+	return False
+	
+FILTER_WORDS = ['public-adult','adult','xxx','sex','hustler','playboy']	
+	
+def isFilterWord(qword):
+
+	if ' ' in qword:
+		words = qword.split(' ')
+		for s_word in FILTER_WORDS:
+			for word in words:
+				if word.lower() in s_word.lower():
+					return True
+	else:
+		word = qword
+		for s_word in FILTER_WORDS:
+				if word.lower() in s_word.lower():
+					return True
+	
+	return False

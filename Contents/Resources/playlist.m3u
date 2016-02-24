@@ -1,0 +1,13 @@
+﻿#EXTM3U
+#EXTINF:0,[B][COLOR cyan]PLAYLIST[/COLOR] - [COLOR lightgreen]By coder-alpha[/COLOR][/B]
+
+#EXTINF:0,[COLOR yellow][B]== TEST CHANNELS==[/B][/COLOR]
+
+#EXTINF:-1 tvg-id="NDTV 24x7" tvg-name="NDTV 24x7" tvg-language="English" tvg-country="IN" tvg-logo="https://pbs.twimg.com/profile_images/575304317/logo_ndtv_news_400x400.png" group-title="News",NDTV 24x7
+http://ndtv.live-s.cdn.bitgravity.com/cdn-live-b7/_definst_/ndtv/live/ndtv247live.smil/playlist.m3u8
+
+#EXTINF:-1 tvg-id="Bloomberg" tvg-name="Bloomberg" tvg-language="English" tvg-country="US" tvg-logo="http://cdn-img.easyicon.net/png/11264/1126483.gif" group-title="News",Bloomberg
+http://cdn3.videos.bloomberg.com/btv/us/master.m3u8
+
+#EXTINF:-1 tvg-id="Nasa TV" tvg-name="Nasa TV" tvg-language="English" tvg-country="IN" tvg-logo="http://cdn-img.easyicon.net/png/11264/1126483.gif" group-title="Documentary",Nasa TV
+http://nasatv-lh.akamaihd.net/i/NASA_101@319270/master.m3u8

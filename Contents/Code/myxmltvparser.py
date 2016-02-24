@@ -3,9 +3,12 @@ import datetime
 CHANNELS = {}
 
 ####################################################################################################
-def initchannels(xmlguide):
+def initchannels():
 	channels = {}
-	for key in xmlguide:
+	XML_URL = Resource.Load(Prefs['epg_guide'], binary = True)
+	XML_SOURCE = HTML.ElementFromString(XML_URL, encoding=None)
+		
+	for key in XML_SOURCE:
 		channel = {}
 		channels[0] = channel
 
@@ -17,9 +20,10 @@ def format_time(timestamp):
 
 
 ####################################################################################################
-def epgguide(channelID, currentTime):
+def epgguide(channelID, country, lang, currentTime):
 	epgInfo = 'No EPG Info Available'
-	#Log("currenttime ---------------- " + str(currentTime))
+	if Prefs['debug']:
+		Log("currenttime ---------------- " + str(currentTime))
 	try:
 		for channel in CHANNELS:
 			if channel.id in channelID:

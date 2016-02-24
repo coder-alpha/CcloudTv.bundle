@@ -38,7 +38,7 @@ How To Install
 How To Use
 ==============
 
-- No configuration required, however, one can set a private database web url under Preferences. Refer Plex forums support thread.
+- No configuration required, however, one can set a private web url or local file under Preferences. Refer Plex forums support thread.
 
 Known Issues
 ==============
@@ -53,3 +53,7 @@ Acknowledgements
 - Credits to [Cigaras, Valdas Vaitiekaitis] (https://forums.plex.tv/discussion/83083/rel-iptv-bundle-plugin-that-plays-iptv-streams-from-a-m3u-playlist/p1): IPTV (This plugins uses some parts)
 - Credits to [SharkOne] (http://forums.plex.tv/discussion/102253/rel-bittorrent-channel/p1): (Some parts of Channel updater)
 - Credits to [zombian] (http://forums.plex.tv/profile/zombian) for plugin icons
+- Credits to [walktheway] (http://forums.plex.tv/discussion/96270/vlc-channel) (VLC Transcoder based on VLC Plex Channel)
+- Credits to [b_caudill21] (http://forums.plex.tv/discussion/193042/rel-expat-tv) (Online guide code based on Expat plugin)
+- Credits to [coryo123] (https://forums.plex.tv/discussion/194503) (DumbTools-for-Plex)
+- Credits to [Filippo Valsorda] (https://github.com/FiloSottile) (Redirect Follower)

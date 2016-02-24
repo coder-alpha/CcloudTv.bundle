@@ -8,7 +8,7 @@
 		<dict>
 			<key>URLPatterns</key>
 			<array>
-				<string>.*mp4cCloudVid*.</string>
+				<string>.*cCloudVid*.</string>
 			</array>
 		</dict>
 	</dict>

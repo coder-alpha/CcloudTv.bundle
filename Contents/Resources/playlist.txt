@@ -1,0 +1,3 @@
+1;NDTV;News;India;English;http://ndtv.live-s.cdn.bitgravity.com/cdn-live-b7/_definst_/ndtv/live/ndtv247live.smil/playlist.m3u8;https://pbs.twimg.com/profile_images/575304317/logo_ndtv_news_400x400.png;02/15/2016;http://www.locatetv.com/listings/ndtv-24-7||
+2;Bloomberg;News;US;English;http://cdn3.videos.bloomberg.com/btv/us/master.m3u8;http://cdn-img.easyicon.net/png/11264/1126483.gif;02/15/2016||
+3;Nasa TV;Documentary;US;English;http://nasatv-lh.akamaihd.net/i/NASA_101@319270/master.m3u8;http://cdn-img.easyicon.net/png/11264/1126483.gif;02/15/2016

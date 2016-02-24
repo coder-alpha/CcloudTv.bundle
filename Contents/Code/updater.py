@@ -27,7 +27,7 @@ def menu(title):
 def get_latest_version():
 	try:
 		release_feed_url = ('https://github.com/{0}/releases.atom'.format(common.GITHUB_REPOSITORY))
-		release_feed_data = RSS.FeedFromURL(release_feed_url, cacheTime=0, timeout=15)
+		release_feed_data = RSS.FeedFromURL(release_feed_url, cacheTime=0, timeout=10)
 		link = release_feed_data.entries[0].link
 		tags = link.split('/')
 		tag = tags[len(tags)-1]
@@ -35,18 +35,22 @@ def get_latest_version():
 		return (release_feed_data.entries[0].title, summary, tag)
 	except Exception as exception:
 		Log.Error('Checking for new releases failed: {0}'.format(repr(exception)))
+		return (None, None, None)
 
 ################################################################################
 def update_available():
-	latest_version_str, summ, tag = get_latest_version()
-	latest_version_str = getOnlyVersionNumber(latest_version_str)
-	
-	if latest_version_str:
-		#latest_version  = map(int, latest_version_str.split('.'))
-		#current_version = map(int, common.VERSION.split('.'))
-		latest_version  = latest_version_str
-		current_version = common.VERSION
-		return (float(latest_version) > float(current_version), latest_version_str, summ, tag)
+	try:
+		latest_version_str, summ, tag = get_latest_version()
+		latest_version_str = getOnlyVersionNumber(latest_version_str)
+		
+		if latest_version_str:
+			#latest_version  = map(int, latest_version_str.split('.'))
+			#current_version = map(int, common.VERSION.split('.'))
+			latest_version  = latest_version_str
+			current_version = common.VERSION
+			return (float(latest_version) > float(current_version), latest_version_str, summ, tag)
+	except:
+		pass
 	return (False, None, None, None)
 
 ################################################################################
