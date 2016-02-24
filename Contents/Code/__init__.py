@@ -1320,7 +1320,7 @@ def DisplayPage(title, iRange, showimported='False'):
 	session = common_fnc.getSession()
 	
 	if abortBool:
-		return ObjectContainer(header=title, message='Connection error or Server seems down !')
+		return ObjectContainer(header=title, message='Connection error or Server seems down !', title1='Error')
 		
 	if Client.Product in DumbKeyboard.clients or UseDumbKeyboard():
 		DumbKeyboard(PREFIX, oc, Search,
@@ -1413,7 +1413,7 @@ def DisplayPage(title, iRange, showimported='False'):
 				break
 			mCount = mCount+1
 	except:
-		return ObjectContainer(header=title, message='No cCloud TV Channels Available. Server seems down !')
+		return ObjectContainer(header=title, message='Connection error or Server seems down !', title1='Error')
 		
 	try:
 		if Prefs['use_transcoder']:
@@ -1432,7 +1432,7 @@ def DisplayPageList(title, showimported='False'):
 	
 	abortBool = RefreshListing(False)
 	if abortBool:
-		return ObjectContainer(header=title, message='No cCloud TV Channels Available. Server seems down !')
+		return ObjectContainer(header=title, message='Connection error or Server seems down !', title1='Error')
 		
 	if Client.Product in DumbKeyboard.clients or UseDumbKeyboard():
 		DumbKeyboard(PREFIX, oc, Search,
@@ -1462,7 +1462,7 @@ def DisplayPageList(title, showimported='False'):
 				mCount = 0
 				pageCount=pageCount+10
 	except:
-		return ObjectContainer(header=title, message='No cCloud TV Channels Available. Server seems down !')
+		return ObjectContainer(header=title, message='Connection error or Server seems down !', title1='Error')
 
 	return oc
 	
@@ -1743,18 +1743,18 @@ def Search(query):
 	session = common_fnc.getSession()
 	if not Prefs['show_adult'] and Dict['AccessPin'+session] != Prefs['access_pin']:
 		if common.isFilterWord(query):
-			return ObjectContainer(header='Search Results', message='This search term is not allowed based on your access !')
+			return ObjectContainer(header='Search Results', message='This search term is not allowed based on your access !', title1='Search Results')
 	
 	Dict['MyCustomSearch'+query] = query
 	Dict['LastUsedSearchQuery'] = query
 	
 	abortBool = RefreshListing(False)
 	if abortBool:
-		return ObjectContainer(header='Search Results', message='No cCloud TV Channels Available. Server seems down !')
+		return ObjectContainer(header='Search Results', message='No cCloud TV Channels Available or Server seems down !', title1='Search Results')
 		
 	dict_len = len(CACHE_LINKS)
 	if dict_len == 0:
-		return ObjectContainer(header='Search Results', message='No Channels loaded ! Initialize Channel list first.')
+		return ObjectContainer(header='Search Results', message='No Channels loaded ! Initialize Channel list first.', title1='Search Results')
 	
 	start = 0
 	end = 0
@@ -1766,8 +1766,9 @@ def Search(query):
 		except:
 			start = 0
 			end = 0
-	try:
-		for count in CACHE_LINKS:
+
+	for count in range(0,len(CACHE_LINKS)):
+		try:
 			channelNum = CACHE_LINKS[count]['channelNum']
 			channelDesc = CACHE_LINKS[count]['channelDesc']
 			channelUrl = CACHE_LINKS[count]['channelUrl']
@@ -1829,16 +1830,24 @@ def Search(query):
 						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
 					else:
 						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
-	except:
-		return ObjectContainer(header='Search Results', message='No Channels Available. Please check website URL !')
+		except:
+			pass
 	
 	if len(oc) == 0:
-		return ObjectContainer(header='Search Results', message='No Channels Available based on Search query')
+		return ObjectContainer(header='Search Results', message='No Channels Available based on Search query', title1='Search Results')
 		
 	if Prefs['use_datesort']:
 		oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
 	else:	
 		oc.objects.sort(key=lambda obj: obj.title)
+		
+	if Client.Product in DumbKeyboard.clients or UseDumbKeyboard():
+		DumbKeyboard(PREFIX, oc, Search,
+				dktitle = 'Search',
+				dkthumb = R(ICON_SEARCH)
+		)
+	else:
+		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 		
 	# CACHE_LINKS = {}
 	Dict.Save()
@@ -1902,7 +1911,7 @@ def ClearSearches():
 	Dict['LastUsedSearchQuery'] = None
 	Dict.Save()
 	abortBool = RefreshListing(False)
-	return ObjectContainer(header="Search Queue", message='Your Search Queue list will be cleared soon.')
+	return ObjectContainer(header="Search Queue", message='Your Search Queue list will be cleared soon.', title1='Search Queue')
 	
 ######################################################################################
 # Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
@@ -1915,13 +1924,13 @@ def Bookmarks(title):
 	session = common_fnc.getSession()
 	
 	if abortBool:
-		return ObjectContainer(header=title, message='No cCloud TV Channels Available. Server seems down !')
+		return ObjectContainer(header=title, message='Connection error or Server seems down !', title1='Error')
 		
 	dict_len = len(CACHE_LINKS)
 	if dict_len == 0:
-		return ObjectContainer(header='Bookmarks', message='No Channels loaded ! Channel list needs to be initialized first.')
+		return ObjectContainer(header='Bookmarks', message='No Channels loaded ! Channel list needs to be initialized first.', title1='Bookmarks')
 		
-	for x in CACHE_LINKS:
+	for x in range(0,len(CACHE_LINKS)):
 		try:
 			#for each in Dict:
 			channelNum = CACHE_LINKS[x]['channelNum']
