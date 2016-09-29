@@ -1,10 +1,11 @@
-import transcoder, common_fnc
-import os, sys
+import transcoder, common, common_fnc
+import os, sys, re
 
 # clients that dont require rtmp transcoding
 RTMP_TRANSCODE_CLIENTS = ['Plex Web']
 
 MP4_VIDEOS = ['googlevideo.com','googleusercontent.com','blogspot.com']
+INCOMPATIBLE_URL_SERVICES = ['stream.mslive.in','stream.north.kz','stream.sportstv.com.tr','www.youtube.com','stream.canalsavoir.tv']
 
 try:
 	res_folder_path = os.getcwd().split("?\\")[1].split('Plug-in Support')[0]+"Plug-ins/CcloudTv.bundle/Contents/Resources/"
@@ -35,7 +36,7 @@ if res_folder_path not in sys.path:
 #
 ####################################################################################################
 @route(common.PREFIX + '/createvideoclipobject', allow_sync=True)
-def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False):
+def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False, dontUseURLServ=False):
 	
 	vco = ''
 	if '.mp3' in url or '.aac' in url or 'mmsh:' in url:
@@ -50,7 +51,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 			audio_codec = AudioCodec.AAC
 			
 		vco = TrackObject(
-			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True),
+			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ),
 			rating_key = url,
 			title = title,
 			thumb = thumb,
@@ -69,7 +70,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 	elif '.mp4' in url and '.m3u8' not in url:
 		# we will base64 encode the url, so that any conflicting url service does not interfere
 		vco = VideoClipObject(
-			url = common_fnc.encode(url) + 'cCloudVid' + title + 'cCloudVid' + summary + 'cCloudVid' + thumb,
+			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb}))),
 			title = title,
 			thumb = thumb,
 			summary = summary
@@ -77,7 +78,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 	elif common_fnc.ArrayItemsInString(MP4_VIDEOS, url) and '.m3u8' not in url:
 		# we will base64 encode the url, so that any conflicting url service does not interfere
 		vco = VideoClipObject(
-			url = common_fnc.encode(url) + 'cCloudVid' + title + 'cCloudVid' + summary + 'cCloudVid' + thumb,
+			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb}))),
 			title = title,
 			thumb = thumb,
 			summary = summary
@@ -100,7 +101,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 			url = Prefs['transcode_server'] + session + '.m3u8'
 			
 		vco = VideoClipObject(
-			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, transcode=transcode),
+			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, transcode=transcode, dontUseURLServ=dontUseURLServ),
 			#rating_key = url,
 			url = url,
 			title = title,
@@ -114,40 +115,57 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 					#audio_channels = 2,			# 2, 6
 					#container = container,
 					#audio_codec = audio_codec,
-					parts = [
-						PartObject(
-							key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container)
-						)
-					],
+					parts = [PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container))],
 					optimized_for_streaming = True
 				)
 			]
 		)
-	else:	
-		vco = VideoClipObject(
-			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True),
-			#rating_key = url,
-			url = url,
-			title = title,
-			summary = summary,
-			thumb = thumb,
-			items = [
-				MediaObject(
-					#container = Container.MP4,	 # MP4, MKV, MOV, AVI
-					#video_codec = VideoCodec.H264, # H264
-					#audio_codec = AudioCodec.AAC,  # ACC, MP3
-					#audio_channels = 2,			# 2, 6
-					#container = container,
-					#audio_codec = audio_codec,
-					parts = [
-						PartObject(
-							key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container)
-						)
-					],
-					optimized_for_streaming = True
-				)
-			]
-		)
+	else:
+		url_serv = None
+		if not dontUseURLServ and not common_fnc.ArrayItemsInString(INCOMPATIBLE_URL_SERVICES, url):
+			if Prefs['debug']:
+				Log("Finding URLService for " + url)
+			url_serv = URLService.ServiceIdentifierForURL(url)
+		if url_serv <> None:
+			if Prefs['debug']:
+				Log("Using URLService for " + url)
+			p = re.compile(ur'^((http[s]?|ftp):\/)?\/?([^:\/\s]+)((\/\w+)*\/)([\w\-\.]+[^#?\s]+)(.*)?(#[\w\-]+)?$')
+			remote_host = re.search(p, url).group(3)
+			vco = VideoClipObject(
+				url = remote_host + "ccloudtv2://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb}))),
+				title = title,
+				summary = summary,
+				thumb = thumb
+			)
+		else:
+			parts = []
+			rangeX = 1
+			if url.endswith('.ts') and inc_container: # for .ts segments add them as parts to have continuos playback
+				rangeX = 1000
+			for x in range(0,rangeX):
+				po = PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container))
+				parts.append(po)
+				
+			vco = VideoClipObject(
+				key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ),
+				rating_key = url,
+				#url = url,
+				title = title,
+				summary = summary,
+				thumb = thumb,
+				items = [
+					MediaObject(
+						#container = Container.MP4,	 # MP4, MKV, MOV, AVI
+						#video_codec = VideoCodec.H264, # H264
+						#audio_codec = AudioCodec.AAC,  # ACC, MP3
+						#audio_channels = 2,			# 2, 6
+						#container = container,
+						#audio_codec = audio_codec,
+						parts = parts,
+						optimized_for_streaming = True
+					)
+				]
+			)
 
 	if inc_container:
 		return ObjectContainer(objects = [vco])
@@ -155,13 +173,13 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 		return vco
 		
 ####################################################################################################
-def GetVideoURL(url, live, transcode, finalPlay):
+def GetVideoURL(url, live, transcode, finalPlay, **kwargs):
 
 	#url = 'http://wpc.c1a9.edgecastcdn.net/hls-live/20C1A9/cnn/ls_satlink/b_828.m3u8?Vd?u#bt!25'
 	
-	if '.m3u' in url and '.m3u8' not in url:
+	if '.m3u' in url and '.ts' in url:
 		#return HTTPLiveStreamURL(url=url) # does not work - retrieves only single segment
-		return PlayVideoLive(url=url)
+		return PlayVideoLive(url=url) # playing .ts segments as PartObjects
 	elif url.startswith('rtmp') and not transcode:
 		if Prefs['debug']:
 			Log.Debug('*' * 80)
@@ -184,6 +202,7 @@ def GetVideoURL(url, live, transcode, finalPlay):
 	else:
 		if transcode and finalPlay:
 			time.sleep(10) # give some delay for transcoding to begin - remember output m3u8 is not instant
+
 		return HTTPLiveStreamURL(url = url)
 
 ####################################################################################################
@@ -192,6 +211,6 @@ def PlayVideoLive(url):
 
 	return HTTPLiveStreamURL(url=url)
 	#return Redirect(url)
-	#return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url))
+	#return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)
 
 	

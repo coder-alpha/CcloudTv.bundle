@@ -1,8 +1,8 @@
-######################################################################################
+###############################################################################################
 #
-#	CcloudTv
+#	cCloud TV | A Community based Social IPTV Service for Live TV, Movies, TV Shows & Radio
 #
-######################################################################################
+###############################################################################################
 import common, common_fnc, updater, time, transcoder, share, myxmltvparser, guide_online, playback
 import re, urllib2, sys, os, json
 import datetime as DT
@@ -42,6 +42,7 @@ ICON_UNKNOWN = "icon-unknown.png"
 ICON_GUIDE = "icon-guide.png"
 ICON_IMPORTED = "icon-imported.png"
 ICON_OK = "icon-ok.png"
+ICON_RESET = "icon-reset.png"
 ICON_WARNING = "icon-warning.png"
 ICON_CANCEL = "icon-error.png"
 ICON_CLEAR = "icon-clear.png"
@@ -62,6 +63,7 @@ NONUPDATE_VIEW_CLIENTS = ['Android']
 
 # genre listing
 GENRE_ARRAY = []
+GENRE_ADULT_FLAG = []
 
 # language listing
 LANGUAGE_ARRAY = []
@@ -79,9 +81,13 @@ del CCLOUD_PAGE_DATA[:]
 CACHE_DISCOVER = []
 del CACHE_DISCOVER[:]
 
-# cache links
+# cache ccloud links
 CACHE_LINKS = []
 del CACHE_LINKS[:]
+
+# cache ext sources links
+CACHE_LINKS2 = []
+del CACHE_LINKS2[:]
 
 CCLOUDTV_BOOL = []
 IMPORT_BOOL = []
@@ -94,8 +100,6 @@ PLEXSHARE_URL = common_fnc.decode(common_fnc.decode("YUhSMGNEb3ZMM1JwYm5rdVkyTXZ
 
 US_EST_UTC_SHIFT = 5
 NO_OF_THREADS = 2
-
-
 
 ######################################################################################
 
@@ -110,7 +114,7 @@ def Start():
 	
 	HTTP.ClearCache()
 	#HTTP.CacheTime = CACHE_1HOUR
-	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0'
+	HTTP.Headers['User-Agent'] = common.USER_AGENT
 	if Prefs['use_transcoder']:
 		del transcoder.VLC_INSTANCES[:]
 		transcoder.GetAllExtVlcInstances()
@@ -124,7 +128,15 @@ def Start():
 
 @handler(PREFIX, TITLE, art=ART, thumb=ICON_DISPLAY)
 def MainMenu():
-		
+	
+	# Initialize here so that available for Pinned Channels
+	# Parse XML Tv Guide in separate thread
+	Dict['xmlTvParserThreadAlive'] = 'True'
+	Thread.Create(xmlTvParser)
+
+	# Initialize IMDB module once
+	Thread.Create(initIMDB)
+	
 	if Prefs['debug']:
 		Log('Plex-Identifier: ' + common_fnc.getSession())
 		Log('Plex-Product: ' + common_fnc.getProduct())
@@ -180,6 +192,9 @@ def Options(title):
 		
 	oc.add(DirectoryObject(key = Callback(DefineAccessControl, title='Access Control'), title = 'Access Control', summary='Set/Remove Device Specific Temporary Access', thumb = R(ICON_LOCK)))
 	
+	if VerifyAccess():
+		oc.add(DirectoryObject(key = Callback(DictReset), title = 'Reset Dictionary', summary='Reset Dictionary which stores Pins, Bookmarks, Access Key, etc.', thumb = R(ICON_RESET)))
+	
 	return oc
 	
 @route(PREFIX + "/UseDumbKeyboard")
@@ -202,7 +217,6 @@ def ToggleDumbKeyboard():
 	Dict.Save()
 	return ObjectContainer(header='DumbKeyboard', message='DumbKeyboard has been ' + Dict['ToggleDumbKeyboard'+session] + ' for this device.', title1='DumbKeyboard')
 
-	
 @route(PREFIX + "/verifyaccess")
 def VerifyAccess():
 	session = common_fnc.getSession()
@@ -243,6 +257,20 @@ def ClearAccessKey():
 	Dict['AccessPin'+session] = '-';
 	Dict.Save()
 	return ObjectContainer(header='Access Key', message='Your Temporary Access Key has been cleared.', title1='Access Cleared')
+	
+@route(PREFIX + "/dictreset")
+def DictReset():
+	oc = ObjectContainer(title2='Reset Dict File ?')
+	oc.add(DirectoryObject(key = Callback(MainMenu), title = 'No', summary = 'Cancel Resetting Dict File.', thumb = R(ICON_OK)))
+	oc.add(DirectoryObject(key = Callback(DoDictReset), title = 'Yes', summary = 'Reset Dict File. This cannot be reversed !', thumb = R(ICON_OK)))
+	return oc
+	
+@route(PREFIX + "/dodictreset")
+def DoDictReset():
+	Dict.Reset()
+	Dict.Save()
+	return ObjectContainer(header='Dict Reset', message='Your Dict File has been reset.', title1='Dict Reset Success')
+	
 	
 @route(PREFIX + "/showMenu")
 def ShowMenu(title, additionalURL=None):
@@ -414,32 +442,37 @@ def RefreshListing(doRefresh, additionalURL=None):
 	abortBool = True
 	del CCLOUDTV_BOOL[:]
 	del CACHE_LINKS[:]
-		
-	if CCLOUDTV_DB_URL <> None and len(CCLOUDTV_DB_URL) > 0:
+	del CCLOUD_PAGE_DATA[:]
+	del GENRE_ADULT_FLAG[:]
+			
+	if (CCLOUDTV_DB_URL <> None and len(CCLOUDTV_DB_URL) > 0) or Prefs['private_mode']:
 		wUrls = 0
 		for webUrl in common_fnc.shuffle(CCLOUDTV_DB_URL):
-			if len(CACHE_LINKS) > 0 and not doRefresh:
+			if (len(CACHE_LINKS) > 0 and not doRefresh) and not Prefs['private_mode']:
 				return False
 
 			wUrls = wUrls+1
-			if webUrl<> None and common_fnc.FollowRedirectGetHttpStatus(webUrl) in common_fnc.GOOD_RESPONSE_CODES or len(CCLOUDTV_DB_URL) == wUrls: # loop through servers
+			if Prefs['private_mode'] or webUrl<> None and common_fnc.FollowRedirectGetHttpStatus(webUrl) in common_fnc.GOOD_RESPONSE_CODES or len(CCLOUDTV_DB_URL) == wUrls: # loop through servers
 				try:
 					# CACHE_LINKS = {}
 					ch_count_array = []
 					page_data = ""
 					
-					try:
-						page_data = HTTP.Request(webUrl).content
-						del CCLOUD_PAGE_DATA[:]
-						CCLOUD_PAGE_DATA.append(page_data)
-					except:
-						page_data = '0;cCloud TV Server Currently Offline;Announcement;US;English;https://archive.org/download/cCloud_20151126/cCloud.mp4;http://i.imgur.com/yX8CKx3.png;Today;'
-						pass
+					if Prefs['private_mode']:
+						page_data = '0;cCloud TV Server List Not Downloaded - Using Display Channels from Private file only under Options;Announcement;US;English;https://archive.org/download/cCloud_20151126/cCloud.mp4;http://i.imgur.com/yX8CKx3.png;Today;'
+					else:
+						try:
+							page_data = HTTP.Request(webUrl).content
+							if 'Eureka !' == page_data.strip():
+								page_data = ''
+							del CCLOUD_PAGE_DATA[:]
+							CCLOUD_PAGE_DATA.append(page_data)
+						except:
+							page_data = '0;cCloud TV Server Currently Offline;Announcement;US;English;https://archive.org/download/cCloud_20151126/cCloud.mp4;http://i.imgur.com/yX8CKx3.png;Today;'
+							pass
 					
 					count = 0
 					lastchannelNum = '-1'
-
-					
 
 					del GENRE_ARRAY[:]
 					del LANGUAGE_ARRAY[:]
@@ -456,6 +489,7 @@ def RefreshListing(doRefresh, additionalURL=None):
 						channels.append(page_data)
 					
 					# Parse XML Tv Guide in separate thread
+					Dict['xmlTvParserThreadAlive'] = 'True'
 					Thread.Create(xmlTvParser)
 
 					# Parse Private list in separate thread
@@ -473,10 +507,10 @@ def RefreshListing(doRefresh, additionalURL=None):
 							pass
 						else:
 							chMeta = eachCh.split(';')
-							channelNum = ' '
-							channelUrl = ' '
-							logoUrl = None
-							channelDesc = ' '
+							channelNum = 'Unknown'
+							channelUrl = 'Unknown'
+							logoUrl = 'Unknown'
+							channelDesc = 'Unknown'
 							desc = 'Unknown'
 							country = 'Unknown'
 							lang = 'Unknown'
@@ -485,9 +519,9 @@ def RefreshListing(doRefresh, additionalURL=None):
 							active = 'Unknown'
 							onair = 'Unknown'
 							channelID = 'Unknown'
-							dateStrM = channelDesc
+							dateStrM = 'Unknown'
 							epgLink = 'Unknown'
-							epgInfo = ''
+							epgInfo = 'Unknown'
 							
 							try:
 								if chMeta[0] <> None:
@@ -528,22 +562,25 @@ def RefreshListing(doRefresh, additionalURL=None):
 										LANGUAGE_ARRAY.append(lang)
 								if chMeta[5] <> None:
 									channelUrl = chMeta[5]
+									channelUrl = FixUrl(channelUrl)
 								if len(chMeta) >= 7 and chMeta[6] <> None:
 									logoUrl = chMeta[6]
 								if len(chMeta) >= 8 and chMeta[7] <> None:
 									dateStrM = chMeta[7]
 								if len(chMeta) >= 9 and chMeta[8] <> None:
 									epgLink = chMeta[8]
+								if len(chMeta) >= 10 and chMeta[9] <> None:
+									epgInfo = chMeta[9]
 								desc = channelDesc
 							except:
 								pass
 							
-							if channelDesc == None or channelDesc == 'Loading...' or channelDesc == ' ' or channelDesc == '':
+							if channelDesc == None or channelDesc == 'Loading...' or channelDesc == 'Unknown' or channelDesc == '' or channelDesc == ' ':
 								channelDesc = unicode('Undefined Channel: ' + channelNum)
 								
 							#Log("channelDesc----------" + channelDesc)
 							# get update date and used DirectoryObject tagline for sort feature
-							dateStr = ' '
+							dateStr = 'Unknown'
 							try:
 								dateStr = getDate(dateStrM,dateToday)
 							except:
@@ -552,6 +589,8 @@ def RefreshListing(doRefresh, additionalURL=None):
 							mature = 'N'
 							try:
 								mature = isAdultChannel(channelDesc, genre)
+								if mature == 'Y' and len(GENRE_ADULT_FLAG)==0:
+									GENRE_ADULT_FLAG.append('Y')
 							except:
 								pass
 							
@@ -563,24 +602,42 @@ def RefreshListing(doRefresh, additionalURL=None):
 								pass
 					
 					CCLOUDTV_BOOL.append(str(int(ch_count_array[0])))
+					if Prefs['debug']:
+						str(int(ch_count_array[0])) + ' cCloud Channels retrieved !'
 					abortBool = False
 					if doRefresh:
+						# Expire the Cache in 5 mins (the frequency at which cCloud updates its listing)
+						Thread.Create(ExpireCacheIn,{},5*60)
+					
 						return ObjectContainer(header='Refresh Successful', message= str(int(ch_count_array[0])) + ' cCloud Channels retrieved !', title1='Refresh Successful')
-				except e:
-					Log(str(e))
+				except Exception, e:
+					if Prefs['debug']:
+						Log("Error in RefreshListing>: " + str(e))
 					BASE_URL = ""
 					abortBool = True
+
+			if not abortBool: # if no error getting data from a db-url then stop loop
+				break
 	if doRefresh:
-		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !', title1='Refresh Failed')		
+		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !', title1='Refresh Failed')
+
+	# Expire the Cache in 5 mins (the frequency at which cCloud updates its listing)
+	Thread.Create(ExpireCacheIn,{},5*60)
 	return abortBool
 	
-def xmlTvParser():
-		
-	try:
-		if Prefs['use_epg'] and not Prefs['epg_guide'].startswith('http://'):
-			myxmltvparser.initchannels()
-	except:
-		pass
+
+def ExpireCacheIn(sleeptime):
+	time.sleep(sleeptime)
+	if Prefs['debug']:
+		Log("Cache purged !")
+	
+def xmlTvParser():	
+	if Prefs['use_epg']:
+		success = myxmltvparser.initchannels()
+	Dict['xmlTvParserThreadAlive'] = 'False'
+	
+def initIMDB():	
+	guide_online.InitIMDB()
 
 def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additionalURL):
 	
@@ -690,7 +747,8 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 								if group == '':
 									group = 'Uncategorized'
 								else:
-									group = group.title()
+									if 'OnDemand' not in group:
+										group = group.title()
 								if group in GENRE_ARRAY:
 									pass
 								else:
@@ -706,12 +764,18 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 								views = 'Unknown'
 								active = 'Unknown'
 								onair = 'Unknown'
-									
-								epgInfo = ' '
+								
+								epgInfo = common_fnc.GetAttribute(line, 'tvg-id')
+								if epgInfo == '':
+									epgInfo = common_fnc.GetAttribute(line, 'tvg-name')
+									if epgInfo == '':
+										epgInfo = 'Unknown'
 									
 								mature = 'N'
 								try:
 									mature = isAdultChannel(title + ' ' + group, genre)
+									if mature == 'Y' and len(GENRE_ADULT_FLAG)==0:
+										GENRE_ADULT_FLAG.append('Y')
 								except:
 									pass
 									
@@ -746,10 +810,10 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 						pass
 					else:
 						chMeta = eachCh.split(';')
-						channelNum = ' '
-						channelUrl = ' '
-						logoUrl = None
-						channelDesc = ' '
+						channelNum = 'Unknown'
+						channelUrl = 'Unknown'
+						logoUrl = 'Unknown'
+						channelDesc = 'Unknown'
 						desc = 'Unknown'
 						country = 'Unknown'
 						lang = 'Unknown'
@@ -760,7 +824,7 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 						channelID = 'Unknown'
 						dateStrM = channelDesc
 						epgLink = 'Unknown'
-						epgInfo = ' '
+						epgInfo = 'Unknown'
 						
 						try:
 							channelNum = "{0:0=4d}".format(1 + int(lastchannelNum))
@@ -779,7 +843,7 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 							if chMeta[3] <> None:
 								country = chMeta[3]
 								country = FixCountry(country)
-								Log(country)
+								#Log(country)
 								if country in COUNTRY_ARRAY:
 									pass
 								elif country != '!':
@@ -794,17 +858,20 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 									LANGUAGE_ARRAY.append(lang)
 							if chMeta[5] <> None:
 								channelUrl = chMeta[5]
+								channelUrl = FixUrl(channelUrl)
 							if len(chMeta) >= 7 and chMeta[6] <> None:
 								logoUrl = chMeta[6]
 							if len(chMeta) >= 8 and chMeta[7] <> None:
 								dateStrM = chMeta[7]
 							if len(chMeta) >= 9 and chMeta[8] <> None:
 								epgLink = chMeta[8]
+							if len(chMeta) >= 10 and chMeta[9] <> None:
+								epgInfo = chMeta[9]
 							desc = channelDesc
 						except:
 							pass
 						
-						if channelDesc == None or channelDesc == ' ' or channelDesc == '':
+						if channelDesc == None or channelDesc == 'Unknown' or channelDesc == '' or channelDesc == ' ':
 							channelDesc = unicode('Undefined Channel: ' + channelNum)
 							
 						sharable = 'True'
@@ -813,7 +880,7 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 							
 						#Log("channelDesc----------" + channelDesc)
 						# get update date and used DirectoryObject tagline for sort feature
-						dateStr = ' '
+						dateStr = 'Unknown'
 						try:
 							dateStr = getDate(dateStrM,week_ago)
 						except:
@@ -917,58 +984,91 @@ def RecentListing(title):
 		#oc = MultiThreadedRecentListing(title, filterDate, oc)	
 		for count in range(0,len(CACHE_LINKS)):
 			
-			channelNum = CACHE_LINKS[count]['channelNum']
-			channelDesc = CACHE_LINKS[count]['channelDesc']
-			channelUrl = CACHE_LINKS[count]['channelUrl']
-			dateStr = CACHE_LINKS[count]['channelDate']
-			#Log("Date===========  " + dateStr)
-			dateStrA = dateStr.split('/')
-			dateObj = datetime(int(dateStrA[2]), int(dateStrA[0]), int(dateStrA[1]))
-			
-			title = unicode(channelDesc)
-			
-			desc = 'Unknown'
-			country = 'Unknown'
-			lang = 'Unknown'
-			genre = 'Unknown'
-			views = 'Unknown'
-			active = 'Unknown'
-			onair = 'Unknown'
-			mature = 'Unknown'
-			logoUrl = None
-			sharable = 'True'
-			epgLink = 'Unknown'
-			
 			try:
-				logoUrl = CACHE_LINKS[count]['logoUrl']
-				mature = CACHE_LINKS[count]['mature']
-				desc = CACHE_LINKS[count]['desc']
-				country = CACHE_LINKS[count]['country']
-				lang = CACHE_LINKS[count]['lang']
-				genre = CACHE_LINKS[count]['genre']
-				views = CACHE_LINKS[count]['views']
-				active = CACHE_LINKS[count]['active']
-				onair = CACHE_LINKS[count]['onair']
-				epgInfo = CACHE_LINKS[count]['epg']
-				sharable = CACHE_LINKS[count]['sharable']
-				epgLink = CACHE_LINKS[count]['epgLink']
+				channelNum = CACHE_LINKS[count]['channelNum']
+				channelDesc = CACHE_LINKS[count]['channelDesc']
+				channelUrl = CACHE_LINKS[count]['channelUrl']
+				dateStr = CACHE_LINKS[count]['channelDate']
+				#Log("Date===========  " + dateStr)
+				dateStrA = dateStr.split('/')
+				try:
+					dateObj = datetime(int(dateStrA[2]), int(dateStrA[0]), int(dateStrA[1]))
+				except:
+					Log("Error: " + channelDesc + " - " + dateStr)
+					dateObj = filterDate
+				
+				title = unicode(channelDesc)
+				
+				desc = 'Unknown'
+				country = 'Unknown'
+				lang = 'Unknown'
+				genre = 'Unknown'
+				views = 'Unknown'
+				active = 'Unknown'
+				onair = 'Unknown'
+				mature = 'Unknown'
+				logoUrl = 'Unknown'
+				sharable = 'True'
+				epgLink = 'Unknown'
+				
+				try:
+					logoUrl = CACHE_LINKS[count]['logoUrl']
+					mature = CACHE_LINKS[count]['mature']
+					desc = CACHE_LINKS[count]['desc']
+					country = CACHE_LINKS[count]['country']
+					lang = CACHE_LINKS[count]['lang']
+					genre = CACHE_LINKS[count]['genre']
+					views = CACHE_LINKS[count]['views']
+					active = CACHE_LINKS[count]['active']
+					onair = CACHE_LINKS[count]['onair']
+					epgInfo = CACHE_LINKS[count]['epg']
+					sharable = CACHE_LINKS[count]['sharable']
+					epgLink = CACHE_LINKS[count]['epgLink']
+				except:
+					pass
+				
+				#abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session)
+				
+				summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
+				#if epgInfo != '':
+				#	summaryStr = summaryStr + ' | ' + epgInfo
+				tvGuideSum = ''
+				tvGuideCurr = ''
+				rtmpVid = ''
+				
+				if Prefs['use_epg']:
+					if Dict['xmlTvParserThreadAlive'] == 'True':
+						tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+					else:
+						if epgInfo != 'Unknown':
+							epgChID = epgInfo
+						else:
+							epgChID = title
+						tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+						tvGuideSum = myxmltvparser.epgguide(epgChID, country, lang)
+					tvGuideSum = ' | ' + tvGuideSum
+					
+				#Log("Date===========  " + dateStr + " = " + str(dateObj) + " = " + str(filterDate))
+				#Log(channelNum + " : channelDesc----------" + channelDesc)
+					
+				if dateObj >= filterDate and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session):
+					if Prefs['play_direct_from_list']:
+						if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+							rtmpVid = ' (rtmp) '
+						oc.add(playback.CreateVideoClipObject(
+							url = channelUrl,
+							title = title + rtmpVid + tvGuideCurr,
+							thumb = logoUrl,
+							summary = summaryStr + tvGuideSum,
+							session = session,
+							transcode = False))
+					else:
+						if Client.Platform not in LIST_VIEW_CLIENTS:
+							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
+						else:
+							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = None))
 			except:
 				pass
-			
-			#abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session)
-			
-			summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
-			if epgInfo != '':
-				summaryStr = summaryStr + ' | ' + epgInfo
-				
-			#Log("Date===========  " + dateStr + " = " + str(dateObj) + " = " + str(filterDate))
-			#Log(channelNum + " : channelDesc----------" + channelDesc)
-				
-			if dateObj >= filterDate and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session):
-				if Client.Platform not in LIST_VIEW_CLIENTS:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
-				else:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
 		abortBool = False	
 	except:
 		abortBool = True
@@ -1027,8 +1127,8 @@ def DisplayList(title, showimported='False'):
 			active = 'Unknown'
 			onair = 'Unknown'
 			mature = 'Unknown'
-			epgInfo = ''
-			logoUrl = None
+			epgInfo = 'Unknown'
+			logoUrl = 'Unknown'
 			sharable = 'True'
 			epgLink = 'Unknown'
 			imported = 'N'
@@ -1062,20 +1162,68 @@ def DisplayList(title, showimported='False'):
 			#abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session)
 			
 			summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
-			if epgInfo != '':
-				summaryStr = summaryStr + ' | ' + epgInfo
+			#if epgInfo != '':
+			#	summaryStr = summaryStr + ' | ' + epgInfo
+			tvGuideSum = ''
+			tvGuideCurr = ''
+			rtmpVid = ''
+			
+			if Prefs['use_epg']:
+				if Dict['xmlTvParserThreadAlive'] == 'True':
+					tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+				else:
+					if epgInfo != 'Unknown':
+						epgChID = epgInfo
+					else:
+						epgChID = title
+					tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+					tvGuideSum = myxmltvparser.epgguide(epgChID, country, lang)
+				tvGuideSum = ' | ' + tvGuideSum
 				
 			if not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session):
 				if Client.Platform not in LIST_VIEW_CLIENTS:
-					if logoUrl <> None:
+					if logoUrl <> None and logoUrl != 'Unknown':
 						if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
-							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
+							if Prefs['play_direct_from_list'] and False:
+								if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+									rtmpVid = ' (rtmp) '
+								oc.add(playback.CreateVideoClipObject(
+									url = channelUrl,
+									title = title + rtmpVid + tvGuideCurr,
+									thumb = logoUrl,
+									summary = summaryStr + tvGuideSum,
+									session = session,
+									transcode = False))
+							else:
+								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
 					else:
 						if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
-							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
+							if Prefs['play_direct_from_list']:
+								if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+									rtmpVid = ' (rtmp) '
+								oc.add(playback.CreateVideoClipObject(
+									url = channelUrl,
+									title = title + rtmpVid + tvGuideCurr,
+									thumb = logoUrl,
+									summary = summaryStr + tvGuideSum,
+									session = session,
+									transcode = False))
+							else:
+								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = R(ICON_SERIES)))
 				else:
 					if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
+						if Prefs['play_direct_from_list'] and False:
+							if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+								rtmpVid = ' (rtmp) '
+							oc.add(playback.CreateVideoClipObject(
+								url = channelUrl,
+								title = title + rtmpVid + tvGuideCurr,
+								thumb = logoUrl,
+								summary = summaryStr + tvGuideSum,
+								session = session,
+								transcode = False))
+						else:
+							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = None))
 			
 		abortBool = False
 	except:
@@ -1110,10 +1258,10 @@ def DisplayGenreMenu(title, filter1=None, filter2=None, filter3=None):
 			oc.add(DirectoryObject(key = Callback(DisplayGenreLangConSort, titleGen=genre, type="Category", filter1=genre, filter2=filter2, filter3=filter3), title = genre, thumb = R(ICON_GENRE)))
 	
 	oc.objects.sort(key=lambda obj: obj.title)
-	genre = 'Adult'
 	
 	session = common_fnc.getSession()
-	if Prefs['show_adult'] or Dict['AccessPin'+session] == Prefs['access_pin']:
+	if (Prefs['show_adult'] or Dict['AccessPin'+session] == Prefs['access_pin']) and len(GENRE_ADULT_FLAG) > 0:
+		genre = 'Adult'
 		oc.add(DirectoryObject(key = Callback(DisplayGenreLangConSort, titleGen=genre, type="Category", filter1=genre, filter2=filter2, filter3=filter3), title = genre, thumb = R(ICON_GENRE)))
 	
 	return oc
@@ -1188,6 +1336,7 @@ def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=
 		
 	session = common_fnc.getSession()
 	oc2 = []
+	del oc2[:]
 	#Log("DisplayGenreLangConSort------------------- " + str(len(CACHE_LINKS)))
 	try:
 		# for count in range(0,len(CACHE_LINKS)):
@@ -1253,11 +1402,11 @@ def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=
 			# if (titleGen == tkey or ('/' in tkey and titleGen in tkey.split('/'))) and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session):
 				# if Client.Platform not in LIST_VIEW_CLIENTS:
 					# if logoUrl <> None:
-						# oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
+						# oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
 					# else:
-						# oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
+						# oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
 				# else:
-					# oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
+					# oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
 					
 		oc2 = MultiThreadedDisplayGenreLangConSort(titleGen, type, oc2, filter1, filter2, filter3)	
 		
@@ -1295,7 +1444,7 @@ def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=
 		if Client.Platform not in LIST_VIEW_CLIENTS:
 			oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 		else:
-			oc.add(InputDirectoryObject(key = Callback(Search), thumb = None, title='Search', summary='Search Channel', prompt='Search for...'))
+			oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 		
 	Dict['LastUsed'+type] = titleGen
 	Dict.Save()
@@ -1358,7 +1507,7 @@ def DisplayPage(title, iRange, showimported='False'):
 			mature = 'Unknown'
 			epgLink = 'Unknown'
 			epgInfo = ''
-			logoUrl = None
+			logoUrl = 'Unknown'
 			sharable = 'True'
 			imported = 'N'
 			
@@ -1389,23 +1538,73 @@ def DisplayPage(title, iRange, showimported='False'):
 				pass
 			
 			summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
-			if epgInfo != '':
-				summaryStr = summaryStr + ' | ' + epgInfo
+			#if epgInfo != '':
+			#	summaryStr = summaryStr + ' | ' + epgInfo
+			tvGuideSum = ''
+			tvGuideCurr = ''
+			rtmpVid = ''
+			
+			if Prefs['use_epg']:
+				if Dict['xmlTvParserThreadAlive'] == 'True':
+					tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+				else:
+					if epgInfo != 'Unknown':
+						epgChID = epgInfo
+					else:
+						epgChID = title
+					tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+					tvGuideSum = myxmltvparser.epgguide(epgChID, country, lang)
+				tvGuideSum = ' | ' + tvGuideSum
 			
 			if not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session):
 				if Client.Platform not in LIST_VIEW_CLIENTS:
-					if logoUrl <> None:
+					if logoUrl <> None and logoUrl != 'Unknown':
 						if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
-							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
-							mmCount = mmCount+1
+							if Prefs['play_direct_from_list']:
+								if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+									rtmpVid = ' (rtmp) '
+								oc.add(playback.CreateVideoClipObject(
+									url = channelUrl,
+									title = title + rtmpVid + tvGuideCurr,
+									thumb = logoUrl,
+									summary = summaryStr + tvGuideSum,
+									session = session,
+									transcode = False))
+								mmCount = mmCount+1
+							else:
+								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
+								mmCount = mmCount+1
 					else:
 						if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
-							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
-							mmCount = mmCount+1
+							if Prefs['play_direct_from_list']:
+								if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+									rtmpVid = ' (rtmp) '
+								oc.add(playback.CreateVideoClipObject(
+									url = channelUrl,
+									title = title + rtmpVid + tvGuideCurr,
+									thumb = logoUrl,
+									summary = summaryStr + tvGuideSum,
+									session = session,
+									transcode = False))
+								mmCount = mmCount+1
+							else:
+								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = R(ICON_SERIES)))
+								mmCount = mmCount+1
 				else:
 					if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
-						mmCount = mmCount+1
+						if Prefs['play_direct_from_list']:
+							if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+								rtmpVid = ' (rtmp) '
+							oc.add(playback.CreateVideoClipObject(
+								url = channelUrl,
+								title = title + rtmpVid + tvGuideCurr,
+								thumb = logoUrl,
+								summary = summaryStr + tvGuideSum,
+								session = session,
+								transcode = False))
+						else:
+							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = None))
+							mmCount = mmCount+1
 				
 				lastCount = count
 			if ((mCount == 10 and not showimported) or (mmCount == 10 and showimported)):
@@ -1511,11 +1710,12 @@ def getDate(channelDesc,week_ago):
 	#Log("dateStr----------" + dateStr)
 	return dateStr
 
-
-
 @route(PREFIX + '/channelpage', allow_sync=True)
-def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, genre, sharable, epgLink):
+def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, genre, sharable, epgLink, epgChID):
 
+	if epgLink == None:
+		epgLink = 'Unknown'
+		
 	title = unicode(title)
 	oc = ObjectContainer(title2=title)
 	try:
@@ -1526,35 +1726,52 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	transcode = False
 	if Prefs['use_transcoder'] and common_fnc.getProduct() not in playback.RTMP_TRANSCODE_CLIENTS:
 		transcode = True
-		
-	thumb = ''
-	try:
-		url = common_fnc.GetRedirector(url)
-		thumb = GetChannelThumb(url,logoUrl)
-	except:
-		pass
-		
-	listingUrl = epgLink
 	
+	listingUrl = epgLink
 	tvGuide = ' '
 	tvGuideSum = ' '
 	tvGuideCurr = ''
 	rtmpVid = ''
-	if listingUrl != 'Unknown' and listingUrl <> None:
+	art = ''
+	
+	if epgChID == None or epgChID == 'Unknown':
+		epgChID = title
+	
+	if (listingUrl <> None and listingUrl != 'Unknown' and not Prefs['use_epg']) or 'OnDemand' in genre:
 		try:
-			tvGuide = guide_online.GetListing(title, url, listingUrl)
+			tvGuide = guide_online.GetListing(epgChID, url, listingUrl, country, lang, isMovie=('OnDemand' in genre))
 			l = len(tvGuide)
+			sep = ' | '
 			if l > 0:
-				tvGuideCurr = unicode(' : ' + tvGuide[0]['showtitles'])
+				if 'OnDemand' not in genre:
+					tvGuideCurr = unicode(' : ' + tvGuide[0]['showtitles'])
+				else:
+					sep = '\n'
+					try:
+						if common_fnc.GetHttpStatus(logoUrl) != '200':
+							logoUrl = tvGuide[0]['img']
+					except:
+						pass
 			for x in xrange(l):
-				tvGuideSum += tvGuide[x]['showtitles'] + ' : ' + tvGuide[x]['showtimes'] + ' || '
+				tvGuideSum += sep + tvGuide[x]['showtitles'] + ' : ' + tvGuide[x]['showtimes']
 		except:
 			pass
 	elif Prefs['use_epg']:
-		now = str(datetime.now()).replace(':','').replace('-','').replace(' ', '')[0:14]
-		tvGuideSum = myxmltvparser.epgguide(title, country, lang, now)
+		if Dict['xmlTvParserThreadAlive'] == 'True':
+			tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+		else:
+			tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+			tvGuideSum = myxmltvparser.epgguideWithDesc(epgChID, country, lang)
 	else:
 		tvGuideSum = 'EPG Not Yet Implemented'
+		
+	thumb = ''
+	try:
+		if not url.endswith('.ts'):
+			url = common_fnc.GetRedirector(url)
+		thumb = GetChannelThumb(url,logoUrl)
+	except:
+		pass
 		
 	session = common_fnc.getSession()
 	
@@ -1563,19 +1780,21 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 		#Log(url)
 		if 'rtmp:' in url or 'rtmpe:' in url:
 			rtmpVid = ' (rtmp) '
+
 		oc.add(playback.CreateVideoClipObject(
 			url = url,
 			title = title + rtmpVid + tvGuideCurr,
 			thumb = thumb,
-			summary = channelDesc + ' || ' + tvGuideSum,
+			summary = channelDesc + ' | ' + tvGuideSum,
 			session = session,
 			transcode = transcode))
+
 	except:
 		url = ""
 
 	if listingUrl != 'Unknown' and listingUrl <> None and len(tvGuideCurr) > 0:
 		oc.add(DirectoryObject(
-				key = Callback(guide_online.CreateListing, title=title, videoUrl=url, listingUrl=listingUrl, transcode=transcode, session=session),
+				key = Callback(guide_online.CreateListing, title=title, videoUrl=url, listingUrl=listingUrl, transcode=transcode, session=session, country=country, lang=lang, isMovie=('OnDemand' in genre)),
 				title = "TV Guide",
 				summary = 'TV Guide for ' + title,
 				thumb = R(ICON_GUIDE)
@@ -1604,7 +1823,7 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 		))
 	else:
 		oc.add(DirectoryObject(
-			key = Callback(AddPin, channelNum = channelNum, url = url, title = title, channelDesc = channelDesc, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink),
+			key = Callback(AddPin, channelNum = channelNum, url = url, title = title, channelDesc = channelDesc, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgChID),
 			title = "Pin Channel",
 			summary = 'Adds the current Channel to the Pin list',
 			thumb = R(ICON_PIN)
@@ -1614,7 +1833,7 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 		fixedChTitle = FixTitle(title, engonly=True, sharable=True)
 		
 		oc.add(DirectoryObject(
-			key = Callback(AddPlexShare, url = url, title = fixedChTitle, country = country, lang = lang, genre = genre, logoUrl=logoUrl, channelNum=channelNum, channelDesc=channelDesc, sharable=sharable, epgLink=epgLink),
+			key = Callback(AddPlexShare, url = url, title = fixedChTitle, country = country, lang = lang, genre = genre, logoUrl=logoUrl, channelNum=channelNum, channelDesc=channelDesc, sharable=sharable, epgLink=epgLink, epgChID=epgChID),
 			title = "Share Channel",
 			summary = 'Interface for Adding the current Channel to the cCloudTV community listing',
 			thumb = R(ICON_SHARE)
@@ -1668,6 +1887,8 @@ def GetChannelThumb(url, logoUrl):
 			thumb = logoUrl
 		elif 'mmsh:' in url:
 			thumb = R(ICON_UNKNOWN)
+		elif url.endswith('.ts'):
+			thumb = logoUrl
 		elif '.mp4' in url or common_fnc.ArrayItemsInString(playback.MP4_VIDEOS, url):
 			resp = common_fnc.FollowRedirectGetHttpStatus(url)
 			if resp in common_fnc.GOOD_RESPONSE_CODES:
@@ -1679,7 +1900,7 @@ def GetChannelThumb(url, logoUrl):
 	except:
 		thumb = R(ICON_SERIES_UNAV)
 		
-	#Log('Thumb2:' + str(thumb))
+	#Log('Thumb:' + str(thumb))
 
 	return thumb
 	
@@ -1785,7 +2006,7 @@ def Search(query):
 			onair = 'Unknown'
 			mature = 'Unknown'
 			epgInfo = ''
-			logoUrl = None
+			logoUrl = 'Unknown'
 			sharable = 'True'
 			epgLink = 'Unknown'
 			
@@ -1812,24 +2033,61 @@ def Search(query):
 			abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session)
 			
 			summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
-			if epgInfo != '':
-				summaryStr = summaryStr + ' | ' + epgInfo
+			#if epgInfo != '':
+				#	summaryStr = summaryStr + ' | ' + epgInfo
+			tvGuideSum = ''
+			tvGuideCurr = ''
+			rtmpVid = ''
+			
+			if Prefs['use_epg']:
+				if Dict['xmlTvParserThreadAlive'] == 'True':
+					tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+				else:
+					if epgInfo != 'Unknown':
+						epgChID = epgInfo
+					else:
+						epgChID = title
+					tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+					tvGuideSum = myxmltvparser.epgguide(epgChID, country, lang)
+				tvGuideSum = ' | ' + tvGuideSum
 			
 			if not abortBool2 and (query.lower() in channelDesc.lower() or query == channelNum):
 				#Log(title + ' : ' + str(abortBool2))
 				#Log(mature)
-				if logoUrl <> None:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
+				if Prefs['play_direct_from_list']:
+					if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+						rtmpVid = ' (rtmp) '
+					oc.add(playback.CreateVideoClipObject(
+						url = channelUrl,
+						title = title + rtmpVid + tvGuideCurr,
+						thumb = logoUrl,
+						summary = summaryStr + tvGuideSum,
+						session = session,
+						transcode = False))
 				else:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
+					if logoUrl <> None and logoUrl != 'Unknown':
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
+					else:
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = R(ICON_SERIES)))
 			elif '~' in query and int(channelNum) > start-1 and int(channelNum) < end+1:
 				if not Prefs['show_adult'] and mature == 'Y' and Dict['AccessPin'+session] != Prefs['access_pin']:
 					pass
 				else:
-					if logoUrl <> None:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
+					if Prefs['play_direct_from_list']:
+						if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+							rtmpVid = ' (rtmp) '
+						oc.add(playback.CreateVideoClipObject(
+							url = channelUrl,
+							title = title + rtmpVid + tvGuideCurr,
+							thumb = logoUrl,
+							summary = summaryStr + tvGuideSum,
+							session = session,
+							transcode = False))
 					else:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
+						if logoUrl <> None and logoUrl != 'Unknown':
+							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
+						else:
+							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = R(ICON_SERIES)))
 		except:
 			pass
 	
@@ -1948,7 +2206,7 @@ def Bookmarks(title):
 			genre = 'Unknown'
 			views = 'Unknown'
 			epgInfo = ''
-			logoUrl = None
+			logoUrl = 'Unknown'
 			sharable = 'True'
 			epgLink = 'Unknown'
 			
@@ -1969,8 +2227,23 @@ def Bookmarks(title):
 				pass
 			
 			summaryStr = '#: ' + channelNum + ' | ' + desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
-			if epgInfo != '':
-				summaryStr = summaryStr + ' | ' + epgInfo
+			#if epgInfo != '':
+			#	summaryStr = summaryStr + ' | ' + epgInfo
+			tvGuideSum = ''
+			tvGuideCurr = ''
+			rtmpVid = ''
+			
+			if Prefs['use_epg']:
+				if Dict['xmlTvParserThreadAlive'] == 'True':
+					tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+				else:
+					if epgInfo != 'Unknown':
+						epgChID = epgInfo
+					else:
+						epgChID = title
+					tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+					tvGuideSum = myxmltvparser.epgguide(epgChID, country, lang)
+				tvGuideSum = ' | ' + tvGuideSum
 			
 			mature = 'N'
 			try:
@@ -1983,10 +2256,21 @@ def Bookmarks(title):
 			else:
 				if (Dict[str(channelNum)] <> None and Dict[str(channelNum)] <> 'removed' and 'MyCustomSearch' not in Dict[str(channelNum)]) or (Dict[str(title+'-'+genre+'-'+lang+'-'+country)] <> None and Dict[str(title+'-'+genre+'-'+lang+'-'+country)] <> 'removed' and 'MyCustomSearch' not in Dict[str(title+'-'+genre+'-'+lang+'-'+country)]):
 					#Log("channelDesc--------- " + str(channelDesc) + " " + summaryStr + " " + dateStr + " " + str(logoUrl))
-					if logoUrl <> None:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
+					if Prefs['play_direct_from_list']:
+						if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+							rtmpVid = ' (rtmp) '
+						oc.add(playback.CreateVideoClipObject(
+							url = channelUrl,
+							title = title + rtmpVid + tvGuideCurr,
+							thumb = logoUrl,
+							summary = summaryStr + tvGuideSum,
+							session = session,
+							transcode = False))
 					else:
-						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
+							if logoUrl <> None and logoUrl != 'Unknown':
+								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
+							else:
+								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = R(ICON_SERIES)))
 		except:
 			pass
 	
@@ -2101,10 +2385,10 @@ def CheckPin(url):
 # Adds a Channel to the Pins list using the title as a key for the url
 	
 @route(PREFIX + "/addpin")
-def AddPin(channelNum, url, title, channelDesc, logoUrl, country, lang, genre, sharable, epgLink):
+def AddPin(channelNum, url, title, channelDesc, logoUrl, country, lang, genre, sharable, epgLink, epgChID):
 	
 	#url = common_fnc.GetRedirector(url)
-	Dict['Plex-Pin-Pin'+url] = channelNum + 'Key4Split' + title + 'Key4Split' + channelDesc + 'Key4Split' + url + 'Key4Split' + logoUrl + 'Key4Split' + country + 'Key4Split' + lang + 'Key4Split' + genre + 'Key4Split' + sharable + 'Key4Split' + epgLink 
+	Dict['Plex-Pin-Pin'+url] = channelNum + 'Key4Split' + title + 'Key4Split' + channelDesc + 'Key4Split' + url + 'Key4Split' + logoUrl + 'Key4Split' + country + 'Key4Split' + lang + 'Key4Split' + genre + 'Key4Split' + sharable + 'Key4Split' + epgLink + 'Key4Split' + epgChID 
 	
 	#Log("url add-----------" + str(url))
 	# CACHE_LINKS = {}
@@ -2136,7 +2420,7 @@ def ClearPins():
 
 	for each in Dict:
 		keys = Dict[each]
-		if 'Key4Split' in keys:
+		if keys <> None and 'Key4Split' in str(keys):
 			Dict[each] = 'removed'
 			#Log("url remove-----------" + str(url))
 	# CACHE_LINKS = {}
@@ -2158,13 +2442,16 @@ def Pins(title):
 			#Log("keys--------- " + str(keys))
 			if 'Key4Split' in str(keys):
 				values = keys.split('Key4Split')
-				logoUrl = None
+				logoUrl = 'Unknown'
 				epgLink = None
 				country = 'Unknown'
 				lang = 'Unknown'
 				genre = 'Uncategorized'
 				sharable = 'Unknown'
 				epgLink = 'Unknown'
+				epgInfo = 'Unknown'
+				if len(values) > 10:
+					epgInfo = values[10]
 				if len(values) > 9:
 					channelNum = values[0]
 					title = values[1]
@@ -2202,11 +2489,25 @@ def Pins(title):
 				
 				desc = 'Unknown'
 				views = 'Unknown'
-				epgInfo = ' '
 					
 				summaryStr = '#: ' + channelNum + ' | '+ title + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
-				if epgInfo != '':
-					summaryStr = summaryStr + ' | ' + epgInfo
+				#if epgInfo != '':
+				#	summaryStr = summaryStr + ' | ' + epgInfo
+				tvGuideSum = ''
+				tvGuideCurr = ''
+				rtmpVid = ''
+				
+				if Prefs['use_epg']:
+					if Dict['xmlTvParserThreadAlive'] == 'True':
+						tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+					else:
+						if epgInfo != 'Unknown':
+							epgChID = epgInfo
+						else:
+							epgChID = title
+						tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+						tvGuideSum = myxmltvparser.epgguide(epgChID, country, lang)
+					tvGuideSum = ' | ' + tvGuideSum
 				
 				mature = 'N'
 				try:
@@ -2220,10 +2521,21 @@ def Pins(title):
 					pass
 				else:
 					if 'removed' not in channelUrl:
-						if logoUrl <> None:
-							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), title = title, thumb = logoUrl))
+						if Prefs['play_direct_from_list']:
+							if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+								rtmpVid = ' (rtmp) '
+							oc.add(playback.CreateVideoClipObject(
+								url = channelUrl,
+								title = title + rtmpVid + tvGuideCurr,
+								thumb = logoUrl,
+								summary = summaryStr + tvGuideSum,
+								session = session,
+								transcode = False))
 						else:
-							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), title = title, thumb = R(ICON_SERIES)))
+							if logoUrl <> None and logoUrl != 'Unknown':
+								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), title = title, thumb = logoUrl))
+							else:
+								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), title = title, thumb = R(ICON_SERIES)))
 
 		except:
 			pass
@@ -2268,10 +2580,13 @@ def CheckPlexShare(url):
 ########### PlexShare ###########################################################################
 # Yes/No for PlexShare
 @route(PREFIX + "/addplexshare")
-def AddPlexShare(url, title, country, lang, genre, logoUrl, channelNum, channelDesc, sharable, epgLink):	
+def AddPlexShare(url, title, country, lang, genre, logoUrl, channelNum, channelDesc, sharable, epgLink, epgChID):	
 	
 	if Dict['PlexShareThreadAlive'] == 'True':
 		return ObjectContainer(header='Please wait', message='Thread Plex-Share Still Running ! Please try again in a minute.', title1='Please wait')
+		
+	if Prefs['private_mode']:
+		return ObjectContainer(header='Plex Share', message='Plex Share is unavailable in Private mode to reduce duplicate additions.', title1='Not Available in Private Mode')
 	
 	oc = ObjectContainer(title1 = unicode('Confirm Channel Sharing ?'))
 	
@@ -2282,7 +2597,7 @@ def AddPlexShare(url, title, country, lang, genre, logoUrl, channelNum, channelD
 			thumb = R(ICON_OK)
 		))
 	oc.add(DirectoryObject(
-			key = Callback(ChannelPage, url = url, title = title, channelDesc = channelDesc, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), 
+			key = Callback(ChannelPage, url = url, title = title, channelDesc = channelDesc, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgChID), 
 			title = "CANCEL",
 			summary = 'Cancel current Channel sharing',
 			thumb = R(ICON_CANCEL)
@@ -2317,7 +2632,6 @@ def DoPlexShare(url, title, country, lang, genre, logoUrl, submit=False):
 				#plexShareUrl = common_fnc.GetRedirector(PLEXSHARE_URL)
 				#Log("plexShareUrl-----------" + str(plexShareUrl))
 				try:
-					
 					# Parse Private list in separate thread
 					Dict['PlexShareThreadAlive'] = 'True'
 					Thread.Create(ConfirmPlexShare,{},url)
@@ -2407,7 +2721,7 @@ def ConfirmPlexShare(url):
 	Dict.Save()
 	return
 	
-		
+
 @route(PREFIX + "/setgenre")
 def SetGenre(title, url, ctitle, logoUrl, filter1=None, filter2=None, filter3=None):
 
@@ -2494,12 +2808,16 @@ def FixTitle(title, engonly=False, sharable=False):
 
 	if '_' in title:
 		title = title.replace('_',' ')
+	if 'cCloudTV.ORG' in title and 'Property' not in title:
+		title = title.replace('cCloudTV.ORG','')
 	if title.lower() == title:
 		title = title.title()
 	if engonly:
-		title = re.sub(r'[^0-9a-zA-Z \-/.:+&!()]', '?', title)
+		title = re.sub(r'[^0-9a-zA-Z \-/.:+&!()*]', '?', title)
 	if sharable:
 		title = re.sub(r'[^0-9a-zA-Z \-.+&!()]', '?', title)
+		
+	title = title.strip()
 	
 	return title
 	
@@ -2514,7 +2832,14 @@ def FixUrl(url):
 		#par = url[n:].replace('/','%2F')
 		url = url[0:n] + par
 		#Log(url)
-	url = url.replace('.ts','.m3u8')
+	if url.endswith('.ts'):
+		test_url = url.replace('.ts','.m3u8')
+		resp = common_fnc.GetHttpStatus(test_url)
+		if resp in common_fnc.GOOD_RESPONSE_CODES:
+			if Prefs['debug']:
+				Log("Changed " + url + " to " + test_url)
+				url = test_url
+			
 	return url
 ######################################################################################
 # Fix Genre
@@ -2571,10 +2896,11 @@ def MultiThreadedRecentListing(title, filterDate, oc):
 	
 	nthreads = NO_OF_THREADS
 	session = common_fnc.getSession()
-	
+	last_n2 = 0
 	for threadn in range(0,nthreads):
-		n1 = threadn + threadn*len(CACHE_LINKS)/nthreads
-		n2 = n1 + (len(CACHE_LINKS)/nthreads)
+		n1 = min(last_n2, int(startN) + (threadn + threadn*len(CACHE_LINKS)/nthreads))
+		n2 = min((n1+1) + (len(CACHE_LINKS)/nthreads), len(CACHE_LINKS))
+		last_n2 = n2
 		#Log(str(n1) + ' : ' + str(n2))
 		Dict['ListingThreadAlive'+str(threadn)] = 'True'
 		Thread.Create(MultiThreadedRecentListing2, {}, filterDate, n1, n2, oc, threadn, session)
@@ -2611,8 +2937,9 @@ def MultiThreadedRecentListing2(filterDate, n1, n2, oc, threadn):
 			onair = 'Unknown'
 			mature = 'Unknown'
 			epgLink = 'Unknown'
-			logoUrl = None
+			logoUrl = 'Unknown'
 			sharable = 'True'
+			epgInfo = 'Unknown'
 			try:
 				logoUrl = CACHE_LINKS[count]['logoUrl']
 				mature = CACHE_LINKS[count]['mature']
@@ -2631,18 +2958,44 @@ def MultiThreadedRecentListing2(filterDate, n1, n2, oc, threadn):
 			
 			#abortBool2 = ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session)
 			
-			summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang + ' | ' + views + ' Views'
-			if epgInfo != '':
-				summaryStr = summaryStr + ' | ' + epgInfo
+			summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
+			#if epgInfo != '':
+			#	summaryStr = summaryStr + ' | ' + epgInfo
+			tvGuideSum = ''
+			tvGuideCurr = ''
+			rtmpVid = ''
+			
+			if Prefs['use_epg']:
+				if Dict['xmlTvParserThreadAlive'] == 'True':
+					tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+				else:
+					if epgInfo != 'Unknown':
+						epgChID = epgInfo
+					else:
+						epgChID = title
+					tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+					tvGuideSum = myxmltvparser.epgguide(epgChID, country, lang)
+				tvGuideSum = ' | ' + tvGuideSum
 				
 			#Log("Date===========  " + dateStr + " = " + str(dateObj) + " = " + str(filterDate))
 			#Log(channelNum + " : channelDesc----------" + channelDesc)
 				
 			if dateObj >= filterDate and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session):
-				if Client.Platform not in LIST_VIEW_CLIENTS:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = Resource.ContentsOfURLWithFallback(url = logoUrl, fallback= R(ICON_SERIES))))
+				if Prefs['play_direct_from_list']:
+					if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+						rtmpVid = ' (rtmp) '
+					oc.add(playback.CreateVideoClipObject(
+						url = channelUrl,
+						title = title + rtmpVid + tvGuideCurr,
+						thumb = logoUrl,
+						summary = summaryStr + tvGuideSum,
+						session = session,
+						transcode = False))
 				else:
-					oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
+					if Client.Platform not in LIST_VIEW_CLIENTS:
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = Resource.ContentsOfURLWithFallback(url = logoUrl, fallback= R(ICON_SERIES))))
+					else:
+						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = None))
 	except:
 		pass
 
@@ -2656,9 +3009,11 @@ def MultiThreadedDisplayGenreLangConSort(titleGen, type, oc, filter1, filter2, f
 	nthreads = NO_OF_THREADS
 	session = common_fnc.getSession()
 	
+	last_n2=0
 	for threadn in range(0,nthreads):
-		n1 = int(startN) + (threadn + threadn*len(CACHE_LINKS)/nthreads)
-		n2 = min(n1 + (len(CACHE_LINKS)/nthreads), len(CACHE_LINKS))
+		n1 = min(last_n2, int(startN) + (threadn + threadn*len(CACHE_LINKS)/nthreads))
+		n2 = min((n1+1) + (len(CACHE_LINKS)/nthreads), len(CACHE_LINKS))
+		last_n2 = n2
 		#Log(str(n1) + ' : ' + str(n2))
 		Dict['ListingThreadAlive'+str(threadn)] = 'True'
 		Thread.Create(MultiThreadedDisplayGenreLangConSort2,{},titleGen, type, n1, n2, oc, threadn, session, filter1, filter2, filter3)
@@ -2687,97 +3042,121 @@ def MultiThreadedDisplayGenreLangConSort2(titleGen, type, n1, n2, oc, threadn, s
 	if filter3 <> None:
 		buildFilter += filter3
 	
-	#try:
-	for count in range(n1,n2):
-		
-		#items_dict[count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
-		
-		channelNum = CACHE_LINKS[count]['channelNum']
-		channelDesc = CACHE_LINKS[count]['channelDesc']
-		channelUrl = CACHE_LINKS[count]['channelUrl']
-		dateStr = CACHE_LINKS[count]['channelDate']
-		
-		title = unicode(channelDesc)
-		tkey = 'Unknown'
-		desc = 'Unknown'
-		country = 'Unknown'
-		lang = 'Unknown'
-		genre = 'Unknown'
-		views = 'Unknown'
-		active = 'Unknown'
-		onair = 'Unknown'
-		mature = 'Unknown'
-		epgInfo = ''
-		logoUrl = None
-		sharable = 'True'
-		epgLink = 'Unknown'
-		
-		try:
-			logoUrl = CACHE_LINKS[count]['logoUrl']
-		except:
-			pass
-		try:
-			sharable = CACHE_LINKS[count]['sharable']
-		except:
-			pass
-		try:
-			mature = CACHE_LINKS[count]['mature']
-			desc = CACHE_LINKS[count]['desc']
-			country = CACHE_LINKS[count]['country']
-			lang = CACHE_LINKS[count]['lang']
-			genre = CACHE_LINKS[count]['genre']
-			views = CACHE_LINKS[count]['views']
-			active = CACHE_LINKS[count]['active']
-			onair = CACHE_LINKS[count]['onair']
-			epgInfo = CACHE_LINKS[count]['epg']
-			epgLink = CACHE_LINKS[count]['epgLink']
-		except:
-			pass
-		
-		if type == 'Category':
-			tkey = genre
-		elif type == 'Language':
-			tkey = lang
-		elif type == 'Country':
-			tkey = country
+	try:
+		for count in range(n1,n2):
+			#items_dict[count] = {'channelNum': channelNum, 'channelDesc': channelDesc, 'channelUrl': channelUrl, 'channelDate': dateStr}
 			
-		buildFilterM = ''
-		if filter1 <> None:
-			buildFilterM += genre
-		if filter2 <> None:
-			if ('/' in tkey and titleGen in tkey.split('/')):
-				buildFilterM += titleGen
-			else:
-				buildFilterM += lang
-		if filter3 <> None:
-			buildFilterM += country
-		
-		summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
-		
-		if epgInfo != '':
-			summaryStr = summaryStr + ' | ' + epgInfo
-
-		#Log("title----------" + title)
+			channelNum = CACHE_LINKS[count]['channelNum']
+			channelDesc = CACHE_LINKS[count]['channelDesc']
+			channelUrl = CACHE_LINKS[count]['channelUrl']
+			dateStr = CACHE_LINKS[count]['channelDate']
 			
-		if ((buildFilter == buildFilterM) and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session)):
-			if Client.Platform not in LIST_VIEW_CLIENTS:
-				if logoUrl <> None:
-					oc.append(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = logoUrl))
+			title = unicode(channelDesc)
+			tkey = 'Unknown'
+			desc = 'Unknown'
+			country = 'Unknown'
+			lang = 'Unknown'
+			genre = 'Unknown'
+			views = 'Unknown'
+			active = 'Unknown'
+			onair = 'Unknown'
+			mature = 'Unknown'
+			epgInfo = 'Unknown'
+			logoUrl = 'Unknown'
+			sharable = 'True'
+			epgLink = 'Unknown'
+			
+			try:
+				logoUrl = CACHE_LINKS[count]['logoUrl']
+			except:
+				pass
+			try:
+				sharable = CACHE_LINKS[count]['sharable']
+			except:
+				pass
+			try:
+				mature = CACHE_LINKS[count]['mature']
+				desc = CACHE_LINKS[count]['desc']
+				country = CACHE_LINKS[count]['country']
+				lang = CACHE_LINKS[count]['lang']
+				genre = CACHE_LINKS[count]['genre']
+				views = CACHE_LINKS[count]['views']
+				active = CACHE_LINKS[count]['active']
+				onair = CACHE_LINKS[count]['onair']
+				epgInfo = CACHE_LINKS[count]['epg']
+				epgLink = CACHE_LINKS[count]['epgLink']
+			except:
+				pass
+			
+			if type == 'Category':
+				tkey = genre
+			elif type == 'Language':
+				tkey = lang
+			elif type == 'Country':
+				tkey = country
+				
+			buildFilterM = ''
+			if filter1 <> None:
+				buildFilterM += genre
+			if filter2 <> None:
+				if ('/' in tkey and titleGen in tkey.split('/')):
+					buildFilterM += titleGen
 				else:
-					oc.append(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = R(ICON_SERIES)))
-			else:
-				oc.append(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink), tagline=dateStr, summary = summaryStr, title = title, thumb = None))
-		# if (count - n1) >= 500:
-			# Log("---------------------------" + str(len(oc)))
-			# oc2 = ObjectContainer(title2=titleGen)
-			##oc2 = MultiThreadedDisplayGenreLangConSort(titleGen, type, oc2, count)
-			##oc.add(oc2)
-			# oc.add(DirectoryObject(key = Callback(MultiThreadedDisplayGenreLangConSort, titleGen=titleGen, type=type, oc=oc2, startN=count), title = 'More >>', summary = 'More Channels >>', thumb = R(ICON_NEXT)))
-			# Log("---------------------------" + str(len(oc)))
-			# Dict['ListingThreadAlive'+str(threadn)] = 'False'
-			# return
-	#except:
-	#	pass
+					buildFilterM += lang
+			if filter3 <> None:
+				buildFilterM += country
+			
+			summaryStr = '#: ' + channelNum + ' | '+ desc + ' | Category:' + genre + ' | Country:' + country + ' | Language:' + lang
+			#if epgInfo != '':
+			#	summaryStr = summaryStr + ' | ' + epgInfo
+			tvGuideSum = ''
+			tvGuideCurr = ''
+			rtmpVid = ''
+			
+			if Prefs['use_epg']:
+				if Dict['xmlTvParserThreadAlive'] == 'True':
+					tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+				else:
+					if epgInfo != 'Unknown':
+						epgChID = epgInfo
+					else:
+						epgChID = title
+					tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
+					tvGuideSum = myxmltvparser.epgguide(epgChID, country, lang)
+				tvGuideSum = ' | ' + tvGuideSum
+
+			#Log((str(count)) + " : title----------" + title)
+				
+			if ((buildFilter == buildFilterM) and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session)):
+				if Prefs['play_direct_from_list']:
+					if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
+						rtmpVid = ' (rtmp) '
+					oc.append(playback.CreateVideoClipObject(
+						url = channelUrl,
+						title = title + rtmpVid + tvGuideCurr,
+						thumb = logoUrl,
+						summary = summaryStr + tvGuideSum,
+						session = session,
+						transcode = False))
+				else:	
+					if Client.Platform not in LIST_VIEW_CLIENTS:
+						if logoUrl <> None and logoUrl != 'Unknown':
+							oc.append(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
+						else:
+							oc.append(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = R(ICON_SERIES)))
+					else:
+						oc.append(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = None))
+			# if (count - n1) >= 500:
+				# Log("---------------------------" + str(len(oc)))
+				# oc2 = ObjectContainer(title2=titleGen)
+				##oc2 = MultiThreadedDisplayGenreLangConSort(titleGen, type, oc2, count)
+				##oc.add(oc2)
+				# oc.add(DirectoryObject(key = Callback(MultiThreadedDisplayGenreLangConSort, titleGen=titleGen, type=type, oc=oc2, startN=count), title = 'More >>', summary = 'More Channels >>', thumb = R(ICON_NEXT)))
+				# Log("---------------------------" + str(len(oc)))
+				# Dict['ListingThreadAlive'+str(threadn)] = 'False'
+				# return
+	except:
+		pass
 	
 	Dict['ListingThreadAlive'+str(threadn)] = 'False'
 	#Log("Thread " + str(threadn) + " ended")

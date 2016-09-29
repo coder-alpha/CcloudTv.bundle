@@ -8,7 +8,15 @@
 		<dict>
 			<key>URLPatterns</key>
 			<array>
-				<string>.*cCloudVid*.</string>
+				<string>^ccloudtv\:\/\/.+</string>
+			</array>
+		</dict>
+		<key>HostedStreams</key>
+		<dict>
+			<key>URLPatterns</key>
+			<array>
+				<string>.*167.114.102.27*.</string>
+				<string>^ccloudtv2\:\/\/.+</string>
 			</array>
 		</dict>
 	</dict>

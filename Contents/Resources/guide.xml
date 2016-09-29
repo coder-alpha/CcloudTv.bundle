@@ -1,20 +1,55 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<tv generator-info-name="Template - WebGrab+Plus/w MDB &amp; REX Postprocess -- version 1.54.6/0.01 -- Jan van Straaten" generator-info-url="http://www.webgrabplus.com">
+<tv generator-info-name="WebGrab+Plus/w MDB &amp; REX Postprocess -- version  V1.57 -- Jan van Straaten" generator-info-url="http://www.webgrabplus.com">
   <channel id="ABC">
     <display-name lang="en">ABC</display-name>
-    <url>http://www.tvguide.com</url>
+    <url>http://www.ustvnow.com</url>
   </channel>
-  <programme start="20150627103000 +0000" stop="20150627110000 +0000" channel="ABC">
-    <title lang="en">Title</title>
-    <sub-title lang="en">Sub Title</sub-title>
-    <desc lang="en">Description</desc>
-    <date>2013</date>
-    <category lang="en">tvshow</category>
-    <icon src="http://static.tvgcdn.net/rovi/showcards/tvshow/327484/thumbs/16932846_75x100.jpg" />
-    <episode-num system="xmltv_ns">2.3.</episode-num>
-    <previously-shown />
-    <rating system="MPAA">
-      <value>TV-14</value>
-    </rating>
+  <channel id="CW">
+    <display-name lang="en">CW</display-name>
+    <url>http://www.ustvnow.com</url>
+  </channel>
+  <channel id="AMC">
+    <display-name lang="en">AMC</display-name>
+    <url>http://www.ustvnow.com</url>
+  </channel>
+  <programme start="20160928003700 -0600" stop="20160928010700 -0600" channel="ABC">
+    <title lang="en">Nightline</title>
+  </programme>
+  <programme start="20160928010700 -0600" stop="20160928013700 -0600" channel="ABC">
+    <title lang="en">Paid Programming</title>
+    <desc lang="en">Paid programming(n)</desc>
+  </programme>
+  <programme start="20160928013700 -0600" stop="20160928020700 -0600" channel="ABC">
+    <title lang="en">The Insider</title>
+    <desc lang="en">The cast of "Dancing With the Stars"; Kevin Hart(n)</desc>
+  </programme>
+  <programme start="20160928003000 -0600" stop="20160928010000 -0600" channel="CW">
+    <title lang="en">Anger Management</title>
+    <desc lang="en">Charlie is inspired to start a new clinic at the prison(n)</desc>
+  </programme>
+  <programme start="20160928010000 -0600" stop="20160928013000 -0600" channel="CW">
+    <title lang="en">Anger Management</title>
+    <desc lang="en">Jordan convinces his girlfriend to cut him off(n)</desc>
+  </programme>
+  <programme start="20160928013000 -0600" stop="20160928020000 -0600" channel="CW">
+    <title lang="en">Rules of Engagement</title>
+    <desc lang="en">Jeff and Audrey try to prove they won't become boring(n)</desc>
+  </programme>
+  <programme start="20160928060000 -0600" stop="20160928063000 -0600" channel="AMC">
+    <title lang="en">Peter Popoff Ministries</title>
+    <desc lang="en">For over 30 years Reverend Peter Popoff has provided spiritual direction(n)</desc>
+  </programme>
+  <programme start="20160928063000 -0600" stop="20160928070000 -0600" channel="AMC">
+    <title lang="en">Paid Programming</title>
+    <desc lang="en">Paid programming(n)</desc>
+  </programme>
+  <programme start="20160928080000 -0600" stop="20160928083000 -0600" channel="AMC">
+    <title lang="en">Paid Programming</title>
+    <desc lang="en">Paid programming(n)</desc>
+  </programme>
+  <programme start="20160928213000 -0600" stop="20160922000000 -0600" channel="AMC">
+    <title lang="en">Back to the Future Part II</title>
+    <desc lang="en">Marty's time traveling is threatened by a dangerous rival(n)</desc>
+    <icon src="http://m.poster.static-ustvnow.com/11991/AMC/sh" />
   </programme>
 </tv>

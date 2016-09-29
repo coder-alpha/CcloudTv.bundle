@@ -1,4 +1,5 @@
 
+USER_AGENT = 'Mozilla5.0'
 
 ####################################################################################################
 def NormalizeURL(url):
@@ -7,7 +8,7 @@ def NormalizeURL(url):
 
 ####################################################################################################
 def MetadataObjectForURL(url):
-
+		
 	data = get_data(url)
 	
 	furl = data['url']
@@ -24,41 +25,26 @@ def MetadataObjectForURL(url):
 
 ####################################################################################################
 def MediaObjectsForURL(url):
-	
+
 	data = get_data(url)
 	furl = data['url']
 	
-	if '.flv' in furl:
-		return [
-			MediaObject(
-				container = Container.FLV,
-				video_codec = VideoCodec.H264,
-				audio_codec = AudioCodec.AAC,
-				audio_channels = 2,
-				optimized_for_streaming = True,
-				parts = [PartObject(key=Callback(PlayVideo, url=furl))]
-			)
-		]	
-	else:
-		return [
-			MediaObject(
-				container = Container.MP4,
-				video_codec = VideoCodec.H264,
-				audio_codec = AudioCodec.AAC,
-				audio_channels = 2,
-				optimized_for_streaming = True,
-				parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+	return [
+		MediaObject(
+			audio_channels=2,
+			parts=[PartObject(
+				key=HTTPLiveStreamURL(Callback(PlayVideo, url=furl))
+				)]
 			)
 		]
 
 ####################################################################################################
 @indirect
-def PlayVideo(url):
-
-	#return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url))
-		
-	return IndirectResponse(VideoClipObject, key=url)
+def PlayVideo(url, **kwargs):
+	
+	http_headers = {'User-Agent': USER_AGENT}
+	return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)
 
 ####################################################################################################
 def get_data(url):
-	return JSON.ObjectFromString(D(url.split('ccloudtv://')[1]))
+	return JSON.ObjectFromString(D(url.split('ccloudtv2://')[1]))

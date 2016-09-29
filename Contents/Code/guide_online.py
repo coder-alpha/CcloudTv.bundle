@@ -1,5 +1,6 @@
-import playback, common_fnc
+import playback, common_fnc, myxmltvparser
 import datetime, re, time, unicodedata, hashlib, urlparse, types, urllib
+import imdb
 
 # Adapted from Expat plugin : http://forums.plex.tv/discussion/193042/rel-expat-tv/p1
 # Author : b_caudill21 - http://forums.plex.tv/profile/b_caudill21
@@ -8,11 +9,32 @@ import datetime, re, time, unicodedata, hashlib, urlparse, types, urllib
 # 
 ICON_SERIES = "icon-series.png"
 
+IS_LOCATETV_ACTIVE = False
+IS_IMDB_ACTIVE = True
+
+IMDB_OBJ = []
+
+@route(common.PREFIX + '/initimdb')
+def InitIMDB():
+	# Create the object that will be used to access the IMDb's database.
+	try:
+		if len (IMDB_OBJ) == 0:
+			ia = imdb.IMDb() # by default access the web.
+			IMDB_OBJ.append(ia)
+			if Prefs['debug']:
+				Log("IMDB module Initialized Successfully !")
+		else:
+			if Prefs['debug']:
+				Log("IMDB module is already available !")
+	except Exception, e:
+		if Prefs['debug']:
+			Log("Error in guide_online.py > InitIMDB: " + str(e))
+		pass
 
 @route(common.PREFIX + '/check')
-def Check(title, videoUrl, listingUrl):
+def Check(title, videoUrl, listingUrl, country, lang):
 
-	ret = GetListing(title, videoUrl, listingUrl)
+	ret = GetListing(title, videoUrl, listingUrl, country, lang)
 		
 	if ret == None or ret == {}:
 		return False
@@ -21,18 +43,23 @@ def Check(title, videoUrl, listingUrl):
 
 
 @route(common.PREFIX + '/getlisting')
-def GetListing(title, videoUrl, listingUrl):
+def GetListing(title, videoUrl, listingUrl, country, lang, isMovie=False):
 
-	if 'locatetv.com' in listingUrl:
-		return GetLocateTvListing(title, videoUrl, listingUrl)
-	elif 'imdb.com' in listingUrl:
-		return GetImdbData(title, videoUrl, listingUrl)
+	if 'locatetv.com' in listingUrl and IS_LOCATETV_ACTIVE:
+		return GetLocateTvListing(title, videoUrl, listingUrl, country, lang)
+	elif ('imdb.com' in listingUrl) or isMovie and IS_IMDB_ACTIVE:
+		if Prefs['use_imdb']:
+			return GetImdbData(title, videoUrl, listingUrl, country, lang)
+		else:
+			return None
+	elif Prefs['use_epg'] and not isMovie:
+		return myxmltvparser.GetXmlListing(title, videoUrl, listingUrl, country, lang)
 	else:
 		return None
 		
 
 @route(common.PREFIX + '/getlocatetvlisting')
-def GetLocateTvListing(title, videoUrl, listingUrl):
+def GetLocateTvListing(title, videoUrl, listingUrl, country, lang):
 
 	guideVals = {}
 	oc = ObjectContainer(title2=title)
@@ -40,7 +67,7 @@ def GetLocateTvListing(title, videoUrl, listingUrl):
 	try:
 		page = HTML.ElementFromURL(listingUrl, timeout=float(common_fnc.global_request_timeout))
 		channels = page.xpath('//li')
-		
+		showtitles = []
 		for channel in channels:
 			showtitles = channel.xpath('//a[@class="pickable"][1]//text()')
 			showtitles2 = channel.xpath('//li[@class="title withPackshot"]//a//img//@title')
@@ -65,17 +92,17 @@ def GetLocateTvListing(title, videoUrl, listingUrl):
 			#	Log(guideVals[x])
 	except Exception, e:
 		if Prefs['debug']:
-			Log("Error in guide_online.py > GetLocateTvListing" + str(e))
+			Log("Error in guide_online.py > GetLocateTvListing: " + str(e))
 
 	return guideVals
 	
 @route(common.PREFIX + '/createlisting')
-def CreateListing(title, videoUrl, listingUrl, transcode, session):
+def CreateListing(title, videoUrl, listingUrl, transcode, session, country, lang):
 
-	tvGuide = GetListing(title, videoUrl, listingUrl)
+	tvGuide = GetListing(title, videoUrl, listingUrl, country, lang)
 	
 	if tvGuide == None:
-		return None
+		return ObjectContainer(header='TV Guide Unavailable', message='TV Guide Unavailable for ' + title, title1='TV Guide Unavailable')
 	oc = ObjectContainer(title2=title)
 	vUrl = videoUrl
 	l = len(tvGuide)
@@ -97,12 +124,109 @@ def CreateListing(title, videoUrl, listingUrl, transcode, session):
 	return oc
 	
 ###############################################################
+# Using http://imdbpy.sourceforge.net/
+# Needs to be available under ~/Libraries/Shared/ folder
+#
+@route(common.PREFIX + '/getimdbdata')
+def GetImdbData(title, videoUrl, url, country, lang):
+
+	if len(IMDB_OBJ) == 0:
+		InitIMDB()
+		if len(IMDB_OBJ) == 0:
+			return None
+	
+	# Get the object that will be used to access the IMDb's database.	
+	ia = IMDB_OBJ[0]
+
+	if Prefs['debug']:
+		Log("Searching for IMDB data for: " + title)
+	# Search for a movie (get a list of Movie objects).
+	s_result = ia.search_movie(title)
+	
+	the_unt = s_result[0]
+	ia.update(the_unt)
+
+	guideVals = {}
+	i = 0
+	# Print some information.
+	cover_url = ''
+	try:
+		#Log( the_unt['full-size cover url'] )
+		cover_url = unicode(the_unt['full-size cover url'])
+	except:
+		pass
+	summary = None
+	try:
+		#Log( the_unt['plot outline'] )
+		summary = the_unt['plot outline']
+		guideVals[i] = {'showtitles': 'Plot-Summary', 'showtimes': unicode(summary), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( the_unt['rating'] )
+		guideVals[i] = {'showtitles': 'Rating', 'showtimes': unicode(str(the_unt['rating']) + '/10'), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( the_unt['runtime'][0] )
+		guideVals[i] = {'showtitles': 'Runtime', 'showtimes': unicode(the_unt['runtime'][0]+' mins.'), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( str(the_unt['certification']) )
+		cert = [t for t in the_unt['certification'] if 'USA' in t]
+		cert = cert[0].split('::')[0]
+		guideVals[i] = {'showtitles': 'Certification', 'showtimes': unicode(cert), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( str(the_unt['cast']) )
+		cast = ''
+		x=0
+		for ca in the_unt['cast']:
+			cast += ca['name']
+			if x > 8 or x >= len(the_unt['cast']):
+				break
+			else:
+				cast += ', '
+			x += 1
+		guideVals[i] = {'showtitles': 'Cast', 'showtimes': unicode(cast), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( the_unt['plot'][0] )
+		plot = the_unt['plot'][0]
+		if summary == None or (summary <> None and summary != plot):
+			guideVals[i] = {'showtitles': 'Plot', 'showtimes': unicode(plot), 'img': cover_url}
+			i+=1
+	except:
+		pass
+		
+	return guideVals
+	
+###############################################################
 # Based on IMDB.Bundle
 # ToDo - Not Implemented Yet
 #
-def GetImdbData(title, videoUrl, url):
+def GetImdbDataOldMethod(title, videoUrl, url, country, lang):
 
 	return None
+	
+	# Create the object that will be used to access the IMDb's database.
+	ia = imdb.IMDb() # by default access the web.
+
+	# Search for a movie (get a list of Movie objects).
+	s_result = ia.search_movie('The Untouchables')
 	
 	metadata = {}
 	try:

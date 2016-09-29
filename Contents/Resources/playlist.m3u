@@ -9,5 +9,8 @@ http://ndtv.live-s.cdn.bitgravity.com/cdn-live-b7/_definst_/ndtv/live/ndtv247liv
 #EXTINF:-1 tvg-id="Bloomberg" tvg-name="Bloomberg" tvg-language="English" tvg-country="US" tvg-logo="http://cdn-img.easyicon.net/png/11264/1126483.gif" group-title="News",Bloomberg
 http://cdn3.videos.bloomberg.com/btv/us/master.m3u8
 
-#EXTINF:-1 tvg-id="Nasa TV" tvg-name="Nasa TV" tvg-language="English" tvg-country="IN" tvg-logo="http://cdn-img.easyicon.net/png/11264/1126483.gif" group-title="Documentary",Nasa TV
+#EXTINF:-1 tvg-id="Nasa TV" tvg-name="Nasa TV" tvg-language="English" tvg-country="US" tvg-logo="http://cdn-img.easyicon.net/png/11264/1126483.gif" group-title="Documentary",Nasa TV
 http://nasatv-lh.akamaihd.net/i/NASA_101@319270/master.m3u8
+
+#EXTINF:-1 tvg-id="Big Buck Bunny 2008" tvg-name="Big Buck Bunny 2008" tvg-language="English" tvg-country="US" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_buck_bunny_poster_big.jpg" group-title="OnDemandMovies",Big Buck Bunny 2008
+http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4

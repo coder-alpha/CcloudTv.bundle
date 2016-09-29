@@ -1,4 +1,4 @@
-import common, urllib2, string, random, base64, datetime, redirect_follower
+import common, urllib2, string, random, base64, datetime, redirect_follower, playback
 
 global_request_timeout = 10
 
@@ -26,8 +26,10 @@ def FollowRedirectGetHttpStatus(url):
 		response = redirect_follower.GetRedirect(url,global_request_timeout)
 		if response <> None:
 			resp = str(response.getcode())
-	except:
-		resp = '0'
+	except Exception as e:
+		if Prefs['debug']:
+			Log(str(e))
+			resp = '0'
 	if Prefs['debug']:
 		Log(url +' : HTTPResponse = '+ resp)
 	return resp

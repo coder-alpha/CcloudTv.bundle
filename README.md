@@ -1,9 +1,9 @@
 CcloudTv.bundle
 ===================
 
-Plex Media Server plug-in designed for cCloud TV BETA | Popcorntime for LIVE TV
+Plex Media Server plug-in designed for cCloud TV | A Community based Social IPTV Service for Live TV, Movies, TV Shows & Radio
 
-- [Plex Forum Support Thread](http://forums.plex.tv/discussion/166602/rel-ccloudtv-channel-iptv/p1)
+- [Plex Forum Support Thread](http://forums.plex.tv/discussion/166602/)
 
 System Requirements
 ===================
@@ -38,13 +38,14 @@ How To Install
 How To Use
 ==============
 
-- No configuration required, however, one can set a private web url or local file under Preferences. Refer Plex forums support thread.
+- No configuration required, however, one can set a private web url or local file under Preferences (examples included). Refer [Plex forums support thread](http://forums.plex.tv/discussion/166602/).
 
 Known Issues
 ==============
 
 - Some channels will not play, if so check in web-browser before reporting with an issue.
-[Plex Forum Support Thread](http://forums.plex.tv/discussion/166602/rel-ccloudtv-channel-iptv/p1)
+- To Fix 'Cannot load M3U8: crossdomain access denied' on PlexWeb - disabling direct play gets around this issue, but it may have issues playing other streams that previously worked fine.
+- Other useful information is listed on the [Plex Forum Support Thread](http://forums.plex.tv/discussion/166602/)
 
 Acknowledgements
 ==============
@@ -57,3 +58,5 @@ Acknowledgements
 - Credits to [b_caudill21] (http://forums.plex.tv/discussion/193042/rel-expat-tv) (Online guide code based on Expat plugin)
 - Credits to [coryo123] (https://forums.plex.tv/discussion/194503) (DumbTools-for-Plex)
 - Credits to [Filippo Valsorda] (https://github.com/FiloSottile) (Redirect Follower)
+- Credits to [IMDbPY] (http://imdbpy.sourceforge.net/index.html) (IMDb scrapper)
+- Thanks to [Twoure] (https://github.com/Twoure) [Shopgirl] (https://github.com/shopgirl284) and many others I have had discussions, read their posts and borrowed code.
