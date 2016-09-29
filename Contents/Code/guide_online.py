@@ -53,7 +53,7 @@ def GetListing(title, videoUrl, listingUrl, country, lang, isMovie=False):
 		else:
 			return None
 	elif Prefs['use_epg'] and not isMovie:
-		return myxmltvparser.GetXmlListing(title, videoUrl, listingUrl, country, lang)
+		return myxmltvparser.GetXmlListing(title, country, lang)
 	else:
 		return None
 		
@@ -97,7 +97,7 @@ def GetLocateTvListing(title, videoUrl, listingUrl, country, lang):
 	return guideVals
 	
 @route(common.PREFIX + '/createlisting')
-def CreateListing(title, videoUrl, listingUrl, transcode, session, country, lang):
+def CreateListing(title, videoUrl, listingUrl, transcode, session, country, lang, isMovie=False):
 
 	tvGuide = GetListing(title, videoUrl, listingUrl, country, lang)
 	
