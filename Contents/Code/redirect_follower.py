@@ -1,4 +1,4 @@
-import urllib2, cookielib, re
+import urllib2, cookielib, re, common
 
 # This script uses HEAD requests (with fallback in case of 405) 
 # to follow the redirect path up to the real URL
@@ -70,7 +70,7 @@ def GetRedirect2(url, rurl, timeout):
 		return response
 	
 	except StandardError:
-		hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
+		hdr = {'User-Agent': common.USER_AGENT,
        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
        'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
        'Accept-Encoding': 'none',

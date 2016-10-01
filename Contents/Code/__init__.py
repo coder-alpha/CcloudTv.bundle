@@ -1713,11 +1713,13 @@ def getDate(channelDesc,week_ago):
 @route(PREFIX + '/channelpage', allow_sync=True)
 def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, genre, sharable, epgLink, epgChID):
 
+	session = common_fnc.getSession()
 	if epgLink == None:
 		epgLink = 'Unknown'
 		
 	title = unicode(title)
 	oc = ObjectContainer(title2=title)
+	
 	try:
 		if Prefs['use_transcoder']:
 			transcoder.CloseThisSessionPidInstance()
@@ -1748,11 +1750,14 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 				else:
 					sep = '\n'
 					try:
-						if common_fnc.GetHttpStatus(logoUrl) != '200':
+						if common_fnc.GetHttpStatus(logoUrl) not in common_fnc.GOOD_RESPONSE_CODES:
 							logoUrl = tvGuide[0]['img']
 					except:
 						pass
 			for x in xrange(l):
+				if tvGuide[x]['showtitles'] == 'Certification' and tvGuide[x]['showtimes'] == 'USA:R' and not Prefs['show_adult'] and Dict['AccessPin'+session] != Prefs['access_pin']:
+					return ObjectContainer(header=title, message=title + ' has a R certification and not available based on your access rights !', title1='Access Control')
+					
 				tvGuideSum += sep + tvGuide[x]['showtitles'] + ' : ' + tvGuide[x]['showtimes']
 		except:
 			pass
@@ -1773,8 +1778,6 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	except:
 		pass
 		
-	session = common_fnc.getSession()
-	
 	try:
 		#Log("----------- url ----------------")
 		#Log(url)

@@ -1,7 +1,8 @@
 ################################################################################
-import common, re, urllib, os
+import common, re, urllib2, os
 
 ICON_OK = "icon-ok.png"
+ICON_DEV = "icon-dev-ver.png"
 ICON_WARNING = "icon-warning.png"
 ICON_ERROR = "icon-error.png"
 ICON_UPDATER = "icon-updater.png"
@@ -19,7 +20,12 @@ def menu(title):
 	ver, version_result, version_result_str, version_result_summary, tag = test_version()
 	url = 'https://github.com/{0}/archive/{1}.zip'.format(common.GITHUB_REPOSITORY, tag)
 	oc.add(DirectoryObject(key=Callback(update, url=url, ver=ver), title='Plugin version: {0}'.format(version_result_str), summary=version_result_summary, thumb=get_test_thumb(version_result)))
+	
 	oc.add(DirectoryObject(key=Callback(updateold,title='Older Releases (Pre '+ver+')', feed=FEED_URL, ver=ver), title= 'Pre '+ ver + ' Releases', summary='Update to an Older Release. Please note an older release might not have updater support.', thumb=R(ICON_RELEASES)))
+	
+	dev_url = 'https://github.com/{0}/archive/{1}.zip'.format(common.GITHUB_REPOSITORY, 'dev')
+	if GetHttpStatus(dev_url) == '200':
+		oc.add(DirectoryObject(key=Callback(update, url=dev_url, ver='/dev branch'), title='Plugin version: /dev', summary='Update plugin to /dev branch', thumb=R(ICON_DEV)))
 	
 	return oc
 
@@ -208,3 +214,23 @@ def cleanSummary(summary):
 	summary = summary.replace('<br/>',' - ')
 	summary = summary.replace('&amp;','&')
 	return summary.lstrip()
+	
+####################################################################################################
+# Get HTTP response code (200 == good)
+def GetHttpStatus(url):
+	try:
+		headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0',
+       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+       'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+       'Accept-Encoding': 'none',
+       'Accept-Language': 'en-US,en;q=0.8',
+       'Connection': 'keep-alive',
+	   'Referer': url}
+	   
+		req = urllib2.Request(url, headers=headers)
+		conn = urllib2.urlopen(req, timeout=10)
+		resp = str(conn.getcode())
+	except Exception as e:
+		resp = '0'
+		Log('Error updater.py > GetHttpStatus: ' + str(e))
+	return resp

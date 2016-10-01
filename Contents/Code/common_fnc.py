@@ -1,4 +1,4 @@
-import common, urllib2, string, random, base64, datetime, redirect_follower, playback
+import common, urllib2, string, random, base64, datetime, redirect_follower, playback, common
 
 global_request_timeout = 10
 
@@ -9,12 +9,22 @@ GOOD_RESPONSE_CODES = ['200','206']
 @route(common.PREFIX + '/gethttpstatus')
 def GetHttpStatus(url):
 	try:
-		conn = urllib2.urlopen(url, timeout = global_request_timeout)
+		headers = {'User-Agent': common.USER_AGENT,
+       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+       'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+       'Accept-Encoding': 'none',
+       'Accept-Language': 'en-US,en;q=0.8',
+       'Connection': 'keep-alive',
+	   'Referer': url}
+	   
+		req = urllib2.Request(url, headers=headers)
+		conn = urllib2.urlopen(req, timeout=global_request_timeout)
 		resp = str(conn.getcode())
-	except StandardError:
+	except Exception as e:
 		resp = '0'
-	if Prefs['debug']:
-		Log(url +' : HTTPResponse = '+ resp)
+		if Prefs['debug']:
+			Log('Error common_fnc.py > GetHttpStatus: ' + str(e))
+			Log(url +' : HTTPResponse = '+ resp)
 	return resp
 	
 
@@ -27,11 +37,10 @@ def FollowRedirectGetHttpStatus(url):
 		if response <> None:
 			resp = str(response.getcode())
 	except Exception as e:
+		resp = '0'
 		if Prefs['debug']:
-			Log(str(e))
-			resp = '0'
-	if Prefs['debug']:
-		Log(url +' : HTTPResponse = '+ resp)
+			Log('Error common_fnc.py > FollowRedirectGetHttpStatus: ' + str(e))
+			Log(url +' : HTTPResponse = '+ resp)
 	return resp
 	
 ####################################################################################################
@@ -46,10 +55,10 @@ def GetRedirector(url):
 			#page = urllib2.urlopen(url, timeout = global_request_timeout)
 			#redirectUrl = page.geturl()
 			redirectUrl = GetRedirectingUrl(url)
-	except:
+	except Exception as e:
+		if Prefs['debug']:
+			Log('Error common_fnc.py > GetRedirector: ' + str(e))
 		redirectUrl = url
-	if Prefs['debug'] and url != redirectUrl:
-		Log(url + "Redirecting to : " + redirectUrl)
 	return redirectUrl
 	
 ####################################################################################################
