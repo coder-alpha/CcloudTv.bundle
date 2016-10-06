@@ -70,15 +70,27 @@ def GetRedirect2(url, rurl, timeout):
 		return response
 	
 	except StandardError:
-		hdr = {'User-Agent': common.USER_AGENT,
-       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-       'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-       'Accept-Encoding': 'none',
-       'Accept-Language': 'en-US,en;q=0.8',
-       'Connection': 'keep-alive',
-	   'Referer': rurl}
+		headers = {'User-Agent': common.USER_AGENT,
+		   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+		   'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+		   'Accept-Encoding': 'none',
+		   'Accept-Language': 'en-US,en;q=0.8',
+		   'Connection': 'keep-alive',
+		   'Referer': rurl}
+	   
+		if '|' in url:
+			url_split = url.split('|')
+			url = url_split[0]
+			headers['Referer'] = url
+			for params in url_split:
+				if '=' in params:
+					param_split = params.split('=')
+					param = param_split[0].strip()
+					param_val = urllib2.quote(param_split[1].strip(), safe='/=&')
+					headers[param] = param_val
+	   
 		try:
-			req = urllib2.Request(url, headers=hdr)
+			req = urllib2.Request(url, headers=headers)
 			response = urllib2.urlopen(req, timeout=timeout)
 			txt = response.read()
 			if 'META HTTP-EQUIV="refresh"' in txt:

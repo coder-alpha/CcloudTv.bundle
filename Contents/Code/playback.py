@@ -67,15 +67,17 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 				)
 			]
 		)
-	elif '.mp4' in url and '.m3u8' not in url:
+	elif '.mp4' in url and '.m3u8' not in url and url.startswith('http'):
 		# we will base64 encode the url, so that any conflicting url service does not interfere
+		Log(url)
 		vco = VideoClipObject(
 			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb}))),
 			title = title,
 			thumb = thumb,
 			summary = summary
 		)
-	elif common_fnc.ArrayItemsInString(MP4_VIDEOS, url) and '.m3u8' not in url:
+	elif common_fnc.ArrayItemsInString(MP4_VIDEOS, url) and '.m3u8' not in url and url.startswith('http'):
+		Log(url)
 		# we will base64 encode the url, so that any conflicting url service does not interfere
 		vco = VideoClipObject(
 			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb}))),

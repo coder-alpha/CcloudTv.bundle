@@ -110,7 +110,7 @@ def epgguide(channelID, country, lang):
 	currentTime = datetime.today()
 	
 	try:
-		if channelID in CHANNELS:
+		if channelID in CHANNELS.keys():
 			items_list = CHANNELS[channelID].values()
 			for item in items_list:
 				if item['start'] <= (currentTime + timedelta(hours = GUIDE_HRS)) and item['stop'] > currentTime:
@@ -128,7 +128,7 @@ def epgguideWithDesc(channelID, country, lang):
 	currentTime = datetime.today()
 	
 	try:
-		if channelID in CHANNELS:
+		if channelID in CHANNELS.keys():
 			items_list = CHANNELS[channelID].values()
 			for item in items_list:
 				if item['start'] <= (currentTime + timedelta(hours = GUIDE_HRS)) and item['stop'] > currentTime:
@@ -146,7 +146,7 @@ def GetXmlListing(channelID, country, lang):
 	currentTime = datetime.today()
 	x = 0
 	try:
-		if channelID in CHANNELS:
+		if channelID in CHANNELS.keys():
 			items_list = CHANNELS[channelID].values()
 			for item in items_list:
 				if item['start'] <= (currentTime + timedelta(hours = GUIDE_HRS)) and item['stop'] > currentTime:
@@ -163,7 +163,7 @@ def epgguideCurrent(channelID, country, lang):
 	currentTime = datetime.today()
 	
 	try:
-		if channelID in CHANNELS:
+		if channelID in CHANNELS.keys():
 			items_list = CHANNELS[channelID].values()
 			for item in items_list:
 				if item['start'] <= (currentTime + timedelta(hours = 3)) and item['stop'] > currentTime:

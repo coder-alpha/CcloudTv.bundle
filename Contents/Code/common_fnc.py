@@ -10,16 +10,30 @@ GOOD_RESPONSE_CODES = ['200','206']
 def GetHttpStatus(url):
 	try:
 		headers = {'User-Agent': common.USER_AGENT,
-       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-       'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-       'Accept-Encoding': 'none',
-       'Accept-Language': 'en-US,en;q=0.8',
-       'Connection': 'keep-alive',
-	   'Referer': url}
+		   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+		   'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+		   'Accept-Encoding': 'none',
+		   'Accept-Language': 'en-US,en;q=0.8',
+		   'Connection': 'keep-alive',
+		   'Referer': url}
 	   
-		req = urllib2.Request(url, headers=headers)
-		conn = urllib2.urlopen(req, timeout=global_request_timeout)
-		resp = str(conn.getcode())
+		if '|' in url:
+			url_split = url.split('|')
+			url = url_split[0]
+			headers['Referer'] = url
+			for params in url_split:
+				if '=' in params:
+					param_split = params.split('=')
+					param = param_split[0].strip()
+					param_val = urllib2.quote(param_split[1].strip(), safe='/=&')
+					headers[param] = param_val
+
+		if 'http://' in url or 'https://' in url:
+			req = urllib2.Request(url, headers=headers)
+			conn = urllib2.urlopen(req, timeout=global_request_timeout)
+			resp = str(conn.getcode())
+		else:
+			resp = '200'
 	except Exception as e:
 		resp = '0'
 		if Prefs['debug']:
@@ -153,7 +167,20 @@ def GetAttribute(text, attribute, delimiter1 = '="', delimiter2 = '"'):
 		z = text.find(delimiter2, y)
 		if z == -1:
 			z = len(text)
-		return unicode(text[y:z].strip())
+		
+		retStr = unicode(text[y:z].strip())
+		if attribute.lower() != 'tvg-logo' and 'http' in retStr:
+			y = text.find('=', x + len(attribute)) + len(' ')
+			z = text.find(' ', y)
+			if z == -1:
+				z = len(text)
+			retStr = unicode(text[y:z].strip())
+
+		if '=' in retStr:
+			retStr = retStr.split('=')[1]
+		if ',' in retStr:
+			retStr = retStr.split(',')[0]
+		return retStr
 	else:
 		return ''
 		
@@ -183,6 +210,7 @@ def getRawPastebinLink(url):
 # Gets the raw Pastebin link
 def getDatePastebinLink(content):
 	try:
+		content = content.strip('Untitled. a guest ')
 		date = str(content.split('<b>')[0].strip())
 		if 'hour' in date:
 			dt = date.split(' ')
@@ -210,3 +238,5 @@ def month_string_to_number(string):
 		'dec':12
 	}
 	return m[string]
+	
+#######################################################################################################
