@@ -50,6 +50,7 @@ ICON_UPLOAD = "icon-upload.png"
 ICON_DK_ENABLE = "icon-dumbKeyboardE.png"
 ICON_DK_DISABLE = "icon-dumbKeyboardD.png"
 ICON_DISCOVER = "icon-discover.png"
+ICON_INFO = "icon-info.png"
 
 # cache discovered links to reduce load on Google API
 CACHE_DISCOVER = {}
@@ -101,7 +102,17 @@ PLEXSHARE_URL = common_fnc.decode(common_fnc.decode("YUhSMGNEb3ZMM1JwYm5rdVkyTXZ
 US_EST_UTC_SHIFT = 5
 NO_OF_THREADS = 2
 
+Dict['xmlTvParserStatus'] = 'False'
+
+# Threads
+PLUGIN_Threads = ['xmlTvParserThreadAlive','ParsingPrivThreadAlive','IMDbThreadAlive','ExpireCacheInThreadAlive']
+PLUGIN_Threads_Stat = ['','ParsingPrivThreadAliveComp','','']
+PLUGIN_Threads_Desc = ['Thread to download and parse the EPG. ','Thread to download and parse channels from Private list or Discover list. ','Thread to initialize IMDb python module. ','Thread waits for alotted 5 min. and then purges the links and so forces new links to get downloaded automatically in the background without User intervention. This thread is meant to be Active mostly once Channels have been refreshed. ']
+
+Dict['xmlTvParserThreadAlive'] = 'False'
 Dict['ParsingPrivThreadAlive'] = 'False'
+Dict['IMDbThreadAlive'] = 'False'
+Dict['ExpireCacheInThreadAlive'] = 'False'
 
 ######################################################################################
 
@@ -131,20 +142,21 @@ def Start():
 @handler(PREFIX, TITLE, art=ART, thumb=ICON_DISPLAY)
 def MainMenu():
 	
-	# Initialize here so that available for Pinned Channels
-	# Parse XML Tv Guide in separate thread
-	Dict['xmlTvParserThreadAlive'] = 'True'
-	Thread.Create(xmlTvParser)
-
-	# Initialize IMDB module once
-	Thread.Create(initIMDB)
-	
 	if Prefs['debug']:
 		Log('Plex-Identifier: ' + common_fnc.getSession())
 		Log('Plex-Product: ' + common_fnc.getProduct())
 		Log('Plex-Platform: ' + common_fnc.getPlatform())
 		Log('Plex-Device: ' + common_fnc.getDevice())
 		Log('Plex-DeviceName: ' + common_fnc.getDeviceName())
+		
+	# Initialize here so that available for Pinned Channels
+	# Parse XML Tv Guide in separate thread
+	# Initialize once then let user initialize as required from menu
+	if len(myxmltvparser.CHANNELS.keys()) == 0:
+		xmlTvParserThread()
+
+	# Initialize IMDB module once
+	Thread.Create(initIMDB)
 		
 	oc = ObjectContainer(title2=TITLE)
 	ChHelper = ' (Refresh List)'
@@ -196,7 +208,27 @@ def Options(title):
 	
 	if VerifyAccess():
 		oc.add(DirectoryObject(key = Callback(DictReset), title = 'Reset Dictionary', summary='Reset Dictionary which stores Pins, Bookmarks, Access Key, etc.', thumb = R(ICON_RESET)))
+		
+	oc.add(DirectoryObject(key = Callback(ProcessesRunning), title = 'Processes', summary='Process thread that are active or inactive.', thumb = R(ICON_INFO)))
 	
+	return oc
+	
+@route(PREFIX + "/ProcessesRunning")
+def ProcessesRunning():
+
+	oc = ObjectContainer(title2='Processes')
+
+	c = 0
+	for t in PLUGIN_Threads:
+		if Dict[t] == 'True':
+			if Dict[t+'Comp'] != None:
+				p = str(Dict[t+'Comp']) + ' % done. '
+			else:
+				p = ''
+			oc.add(DirectoryObject(key = Callback(MainMenu), title = t + ' Active', summary= PLUGIN_Threads_Desc[c] + p + t + ': running in background.', thumb = R(ICON_CANCEL)))
+		else:
+			oc.add(DirectoryObject(key = Callback(MainMenu), title = t + ' InActive', summary= PLUGIN_Threads_Desc[c] + t + ': not running in background.', thumb = R(ICON_OK)))
+		c += 1
 	return oc
 	
 @route(PREFIX + "/UseDumbKeyboard")
@@ -287,7 +319,7 @@ def ShowMenuDiscover(title, additionalURL=None):
 	if Dict['ParsingPrivThreadAlive'] == 'True':
 		ChHelper2 = ChHelper2 + ' Imported Channels from Private list... please wait a few moments before proceeding.'
 	oc.add(DirectoryObject(
-		key = Callback(ShowMenu, title = 'Main Menu'), 
+		key = Callback(MainMenu), 
 		title = 'Channels' + ChHelper, 
 		summary = 'Channels' + ChHelper2,
 		thumb = R(ICON)))
@@ -330,7 +362,9 @@ def ShowMenu(title, additionalURL=None):
 			title = 'Discover Channels', 
 			summary = 'Discover Channels from online Pastebin.com listings',
 			thumb = R(ICON_DISCOVER)))
-	oc.add(DirectoryObject(key = Callback(RefreshListing, doRefresh=True, additionalURL=additionalURL), title = 'Refresh Channels', summary='Refreh Channel downloads the latest listing from the cCloud TV server and also any changes made to your Private List(s)', thumb = R(ICON)))
+	oc.add(DirectoryObject(key = Callback(RefreshListing, doRefresh=True, additionalURL=additionalURL), title = 'Refresh Channels', summary='Refresh Channel downloads the latest listing from the cCloud TV server and also any changes made to your Private List(s)', thumb = R(ICON)))
+	if Prefs['use_epg']:
+		oc.add(DirectoryObject(key = Callback(xmlTvParserThread, showMsg=True), title = 'Refresh TV Guide', summary='Refresh TV Guide to the latest listing from Preferences', thumb = R(ICON_GUIDE)))
 	
 	return oc
 	
@@ -678,17 +712,37 @@ def RefreshListing(doRefresh, additionalURL=None):
 	
 
 def ExpireCacheIn(sleeptime):
+	Dict['ExpireCacheInThreadAlive'] = 'True'
 	time.sleep(sleeptime)
 	if Prefs['debug']:
 		Log("Cache purged !")
+	Dict['ExpireCacheInThreadAlive'] = 'False'
+
+@route(PREFIX + "/xmlTvParserThread")
+def xmlTvParserThread(showMsg=False):
+	# Initialize here so that available for Pinned Channels
+	# Parse XML Tv Guide in separate thread
+	Dict['xmlTvParserThreadAlive'] = 'True'
+	Thread.Create(xmlTvParser)
+	if showMsg:
+		if Prefs['use_epg']:
+			return ObjectContainer(header='Refreshing XML Guide', message='XML Tv Guide is being refreshed !', title1='Refreshing Guide')
+		else:
+			return ObjectContainer(header='EPG not Enabled', message='EPG NOT Enabled under Preferences !', title1='EPG Not Enabled')
 	
 def xmlTvParser():	
 	if Prefs['use_epg']:
 		success = myxmltvparser.initchannels()
 	Dict['xmlTvParserThreadAlive'] = 'False'
+	if success:
+		Dict['xmlTvParserStatus'] = 'True'
+	else:
+		Dict['xmlTvParserStatus'] = 'False'
 	
-def initIMDB():	
+def initIMDB():
+	Dict['IMDbThreadAlive'] = 'True'
 	guide_online.InitIMDB()
+	Dict['IMDbThreadAlive'] = 'False'
 
 @route(PREFIX + "/extm3uparser")	
 def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additionalURL, doWait=True):
@@ -1800,8 +1854,8 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 		transcode = True
 	
 	listingUrl = epgLink
-	tvGuide = ' '
-	tvGuideSum = ' '
+	tvGuide = []
+	tvGuideSum = ''
 	tvGuideCurr = ''
 	rtmpVid = ''
 	art = ''
@@ -1833,9 +1887,11 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 				tvGuideSum += sep + tvGuide[x]['showtitles'] + ' : ' + tvGuide[x]['showtimes']
 		except:
 			pass
+	elif Prefs['use_epg'] and Dict['xmlTvParserThreadAlive'] == 'False' and Dict['xmlTvParserStatus'] == 'False':
+		tvGuideSum = 'Guide downloading or parsing caused an error. Please refer log file.'
 	elif Prefs['use_epg']:
 		if Dict['xmlTvParserThreadAlive'] == 'True':
-			tvGuideSum = 'Guide Info is currently being downloaded/parsed'
+			tvGuideSum = 'Guide Info is currently being downloaded or parsed'
 		else:
 			tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
 			tvGuideSum = myxmltvparser.epgguideWithDesc(epgChID, country, lang)
@@ -1867,7 +1923,7 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	except:
 		url = ""
 
-	if listingUrl != 'Unknown' and listingUrl <> None and len(tvGuideCurr) > 0:
+	if (listingUrl != 'Unknown' and listingUrl != None and len(tvGuide) > 0) or (not Prefs['use_epg'] and len(tvGuide) > 0) or (Prefs['use_epg'] and Dict['xmlTvParserStatus'] == 'True' and tvGuideSum != '' and tvGuideSum != 'Guide Info is currently being downloaded or parsed'):
 		oc.add(DirectoryObject(
 				key = Callback(guide_online.CreateListing, title=title, videoUrl=url, listingUrl=listingUrl, transcode=transcode, session=session, country=country, lang=lang, isMovie=isMovie),
 				title = "TV Guide",

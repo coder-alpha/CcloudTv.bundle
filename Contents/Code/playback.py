@@ -1,5 +1,5 @@
 import transcoder, common, common_fnc
-import os, sys, re
+import os, sys, re, time
 
 # clients that dont require rtmp transcoding
 RTMP_TRANSCODE_CLIENTS = ['Plex Web']
@@ -85,7 +85,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 			thumb = thumb,
 			summary = summary
 		)
-	elif '.m3u8' not in url and 'rtmp:' in url and transcode: # transcode case
+	elif '.m3u8' not in url and 'rtmp:' in url and transcode and Prefs['use_transcoder']: # transcode case
 		
 		#if inc_container:
 		file = "file:///" + res_folder_path.replace('\\','/').replace(' ','%20') + "MyPreRoll.mp4"

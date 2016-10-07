@@ -103,7 +103,7 @@ def CreateListing(title, videoUrl, listingUrl, transcode, session, country, lang
 	
 	if tvGuide == None:
 		return ObjectContainer(header='TV Guide Unavailable', message='TV Guide Unavailable for ' + title, title1='TV Guide Unavailable')
-	oc = ObjectContainer(title2=title)
+	oc = ObjectContainer(title2=title + ' Guide')
 	vUrl = videoUrl
 	l = len(tvGuide)
 	for x in xrange(l):

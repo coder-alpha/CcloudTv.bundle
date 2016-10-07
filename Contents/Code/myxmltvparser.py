@@ -5,7 +5,9 @@ import time
 CHANNELS = {}
 POSTER_UNAV = 'http://i.imgur.com/0snKSZt.png'
 GUIDE_HRS = 12
-
+#
+# https://github.com/coder-alpha-prog-guide/epg
+#
 ####################################################################################################
 def initchannels():
 	
@@ -21,7 +23,6 @@ def initchannels():
 	
 	if XML_FILES <> None:
 		if (';' or ',' or ' ') in XML_FILES:
-			XML_FILES = None
 			if ';' in XML_FILES:
 				xml_files = XML_FILES.split(';')
 			elif ',' in XML_FILES:
@@ -36,47 +37,69 @@ def initchannels():
 	
 	if len(ALL_XML_GUIDE_FILES) > 0:
 		for XML_FILE in ALL_XML_GUIDE_FILES:
-			if XML_FILE <> None and (XML_FILE.startswith('http://') or XML_FILE.startswith('https://')):
-				XML_SOURCE = XML.ElementFromURL(XML_FILE, encoding=None)
-			else:
-				XML_URL = Resource.Load(XML_FILE, binary = True)
-				XML_SOURCE = XML.ElementFromString(XML_URL, encoding=None)
-				
-			if XML_SOURCE != None:
+			try:
+				if XML_FILE <> None and (XML_FILE.startswith('http://') or XML_FILE.startswith('https://')):
+					if common_fnc.FollowRedirectGetHttpStatus(XML_FILE) not in common_fnc.GOOD_RESPONSE_CODES:
+						XML_FILE = None
+					XML_SOURCE = XML.ElementFromURL(XML_FILE, encoding=None)
+				else:
+					XML_URL = Resource.Load(XML_FILE, binary = True)
+					XML_SOURCE = XML.ElementFromString(XML_URL, encoding=None)
+					
+				if XML_SOURCE != None:
+					if Prefs['debug']:
+						Log("Start Loading XML Guide: " + XML_FILE)
+					
+					count = 0
+					try:
+						for programme in XML_SOURCE.findall("./programme"):
+							count = count + 1
+							channel = programme.get('channel')
+							if len(CHANNEL_ID_REPLACER) > 0 and channel in CHANNEL_ID_REPLACER.keys():
+								try:
+									channel = CHANNEL_ID_REPLACER[channel]['ReplaceVal']
+								except:
+									pass
+							title = programme.find('title').text
+							desc = programme.find('desc')
+							if desc == None:
+								desc = 'Item Summary Unavailable'
+							else:
+								desc = desc.text
+							if desc <> None:
+								desc = desc.strip('(n)')
+								
+							img = programme.find('img')
+							if img == None:
+								img = programme.find('icon')
+								if img <> None:
+									img = img.get('src')
+							if img == None:
+									img = POSTER_UNAV
+							
+							rating = programme.find('star-rating')
+							if rating <> None:
+								rating = rating.find('value')
+								if rating <> None:
+									rating = rating.text
+							
+							start = datetime_from_utc_to_local(programme.get('start'))
+							stop = datetime_from_utc_to_local(programme.get('stop'))
+							item = {'start': start, 'stop': stop, 'title': title, 'desc': desc, 'rating': rating, 'img': img, 'order': count}
+							#Log(str(item))
+							CHANNELS.setdefault(channel, {})[count] = item
+					except Exception as e:
+						if Prefs['debug']:
+							Log('Error myxmltvparser.py > initchannels: ' + str(e))
+						pass
+					if Prefs['debug']:
+						Log("Finished Loading XML Guide: " + XML_FILE)
+			except Exception as e:
 				if Prefs['debug']:
-					Log("Start Loading XML Guide: " + XML_FILE)
-				
-				count = 0
-				try:
-					for programme in XML_SOURCE.findall("./programme"):
-						count = count + 1
-						channel = programme.get('channel')
-						if len(CHANNEL_ID_REPLACER) > 0 and channel in CHANNEL_ID_REPLACER.keys():
-							try:
-								channel = CHANNEL_ID_REPLACER[channel]['ReplaceVal']
-							except:
-								pass
-						title = programme.find('title').text
-						desc = programme.find('desc')
-						if desc == None:
-							desc = 'Item Summary Unavailable'
-						else:
-							desc = desc.text
-						img = programme.find('img')
-						if img == None:
-							img = POSTER_UNAV
-						else:
-							img = img.text 	
-						start = datetime_from_utc_to_local(programme.get('start'))
-						stop = datetime_from_utc_to_local(programme.get('stop'))
-						item = {'start': start, 'stop': stop, 'title': title, 'desc': desc, 'img': img, 'order': count}
-						CHANNELS.setdefault(channel, {})[count] = item
-				except:
-					pass
-				if Prefs['debug']:
-					Log("Finished Loading XML Guide: " + XML_FILE)
-
-	return None
+					Log('Error with file: ' + XML_FILE)
+					Log('Error myxmltvparser.py > initchannels(2): ' + str(e))
+				return False
+	return True
 	
 def datetime_from_utc_to_local(input_datetime):
 
