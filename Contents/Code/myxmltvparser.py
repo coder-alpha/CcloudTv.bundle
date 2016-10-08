@@ -11,6 +11,7 @@ GUIDE_HRS = 12
 ####################################################################################################
 def initchannels():
 	
+	CHANNELS.clear()
 	try:
 		CHANNEL_ID_REPLACER = []
 		Channel_ID_Replacer_File = Resource.Load("Channels_ReplaceID.json", binary = True)
@@ -137,7 +138,7 @@ def epgguide(channelID, country, lang):
 			items_list = CHANNELS[channelID].values()
 			for item in items_list:
 				if item['start'] <= (currentTime + timedelta(hours = GUIDE_HRS)) and item['stop'] > currentTime:
-					epgInfo = epgInfo + '\n' + item['start'].strftime('%H:%M') + ' ' + item['title']
+					epgInfo = epgInfo + ' \n' + item['start'].strftime('%H:%M') + ' ' + item['title']
 	except:
 		pass
 		
@@ -155,7 +156,7 @@ def epgguideWithDesc(channelID, country, lang):
 			items_list = CHANNELS[channelID].values()
 			for item in items_list:
 				if item['start'] <= (currentTime + timedelta(hours = GUIDE_HRS)) and item['stop'] > currentTime:
-					epgInfo = epgInfo + '\n' + item['start'].strftime('%H:%M') + ' ' + item['title'] + ' - ' + item['desc']
+					epgInfo = epgInfo + ' \n' + item['start'].strftime('%H:%M') + ' ' + item['title'] + ' - ' + item['desc']
 	except:
 		pass
 		

@@ -363,7 +363,7 @@ def ShowMenu(title, additionalURL=None):
 			summary = 'Discover Channels from online Pastebin.com listings',
 			thumb = R(ICON_DISCOVER)))
 	oc.add(DirectoryObject(key = Callback(RefreshListing, doRefresh=True, additionalURL=additionalURL), title = 'Refresh Channels', summary='Refresh Channel downloads the latest listing from the cCloud TV server and also any changes made to your Private List(s)', thumb = R(ICON)))
-	if Prefs['use_epg']:
+	if Prefs['use_epg'] and Prefs['epg_guide'] != None:
 		oc.add(DirectoryObject(key = Callback(xmlTvParserThread, showMsg=True), title = 'Refresh TV Guide', summary='Refresh TV Guide to the latest listing from Preferences', thumb = R(ICON_GUIDE)))
 	
 	return oc
@@ -399,7 +399,7 @@ def Discover(query='', page=0, next=False):
 			return ObjectContainer(header='Google API Key/CX Error', message='Google\'s API Key and CX is not defined in Discover_Google_Search.json under the Resource folder.', title1 = 'Google API Key/CX Error')
 	except:
 		pass
-	
+			
 	if query <> None and query != '' and (query not in CACHE_DISCOVER.keys() or next):
 		search_response = discoverSearch(query=query, page=page, google_api_key=google_api_key, google_api_cx=google_api_cx)
 		if search_response <> None and '"responseStatus": 403' in search_response:
@@ -449,7 +449,7 @@ def Discover(query='', page=0, next=False):
 				summary = item['snippet'],
 				thumb = R(ICON_DISCOVER)))
 		oc.add(DirectoryObject(
-			key = Callback(Discover, query=query, page=math.floor(len(CACHE_DISCOVER[query].values())/10), next=True), 
+			key = Callback(Discover, query=query, page=int(math.floor(len(CACHE_DISCOVER[query].values())/10)), next=True), 
 			title = 'More searching.. ' + query,
 			summary = 'More searching..',
 			thumb = R(ICON_DISCOVER)))
@@ -730,7 +730,9 @@ def xmlTvParserThread(showMsg=False):
 		else:
 			return ObjectContainer(header='EPG not Enabled', message='EPG NOT Enabled under Preferences !', title1='EPG Not Enabled')
 	
-def xmlTvParser():	
+def xmlTvParser():
+	
+	success = False
 	if Prefs['use_epg']:
 		success = myxmltvparser.initchannels()
 	Dict['xmlTvParserThreadAlive'] = 'False'
@@ -1859,6 +1861,7 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	tvGuideCurr = ''
 	rtmpVid = ''
 	art = ''
+	use_guide_button = False
 	
 	if epgChID == None or epgChID == 'Unknown':
 		epgChID = title
@@ -1868,13 +1871,22 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	if (listingUrl <> None and listingUrl != 'Unknown' and not Prefs['use_epg']) or isMovie:
 		try:
 			tvGuide = guide_online.GetListing(epgChID, url, listingUrl, country, lang, isMovie=isMovie)
+			if tvGuide == None:
+				tvGuide = []
+				if isMovie:
+					tvGuideSum = 'IMDb option not Enabled or Movie info Not Found'
+				else:
+					tvGuideSum = 'EPG Not Enabled'
+			elif not isMovie:
+				use_guide_button = True
+				
 			l = len(tvGuide)
 			sep = ' | '
 			if l > 0:
 				if not isMovie:
 					tvGuideCurr = unicode(' : ' + tvGuide[0]['showtitles'])
 				else:
-					sep = '\n'
+					sep = ' \n'
 					try:
 						if common_fnc.GetHttpStatus(logoUrl) not in common_fnc.GOOD_RESPONSE_CODES:
 							logoUrl = tvGuide[0]['img']
@@ -1895,8 +1907,10 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 		else:
 			tvGuideCurr = myxmltvparser.epgguideCurrent(epgChID, country, lang)
 			tvGuideSum = myxmltvparser.epgguideWithDesc(epgChID, country, lang)
+			if tvGuideSum != '' and tvGuideSum != 'EPG Info Unavailable for ' + epgChID + ' in Guide':
+				use_guide_button = True
 	else:
-		tvGuideSum = 'EPG Not Yet Implemented'
+		tvGuideSum = 'EPG Not Enabled'
 		
 	thumb = ''
 	try:
@@ -1923,7 +1937,7 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	except:
 		url = ""
 
-	if (listingUrl != 'Unknown' and listingUrl != None and len(tvGuide) > 0) or (not Prefs['use_epg'] and len(tvGuide) > 0) or (Prefs['use_epg'] and Dict['xmlTvParserStatus'] == 'True' and tvGuideSum != '' and tvGuideSum != 'Guide Info is currently being downloaded or parsed'):
+	if not isMovie and use_guide_button:
 		oc.add(DirectoryObject(
 				key = Callback(guide_online.CreateListing, title=title, videoUrl=url, listingUrl=listingUrl, transcode=transcode, session=session, country=country, lang=lang, isMovie=isMovie),
 				title = "TV Guide",
