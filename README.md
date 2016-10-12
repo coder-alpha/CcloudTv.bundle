@@ -39,6 +39,7 @@ How To Use
 ==============
 
 - No configuration required, however, one can set a private web url or local file under Preferences (examples included). Refer [Plex forums support thread](http://forums.plex.tv/discussion/166602/).
+- EPG data is available as xml files graciously provided by others located [here] (https://github.com/coder-alpha-prog-guide). Refer [Plex forums support thread](http://forums.plex.tv/discussion/166602/) on how to set them under options.
 
 Known Issues
 ==============
@@ -59,4 +60,4 @@ Acknowledgements
 - Credits to [coryo123] (https://forums.plex.tv/discussion/194503) (DumbTools-for-Plex)
 - Credits to [Filippo Valsorda] (https://github.com/FiloSottile) (Redirect Follower)
 - Credits to [IMDbPY] (http://imdbpy.sourceforge.net/index.html) (IMDb scrapper)
-- Thanks to [Twoure] (https://github.com/Twoure) [Shopgirl] (https://github.com/shopgirl284) and many others I have had discussions, read their posts and borrowed code.
+- Thanks to [Twoure] (https://github.com/Twoure), [Shopgirl] (https://github.com/shopgirl284) and many others I have had discussions, read their posts and borrowed code.

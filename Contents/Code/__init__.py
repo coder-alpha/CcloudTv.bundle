@@ -647,7 +647,7 @@ def RefreshListing(doRefresh, additionalURL=None):
 										LANGUAGE_ARRAY.append(lang)
 								if chMeta[5] <> None:
 									channelUrl = chMeta[5]
-									channelUrl = FixUrl(channelUrl)
+									channelUrl, resp = FixUrl(channelUrl)
 								if len(chMeta) >= 7 and chMeta[6] <> None:
 									logoUrl = chMeta[6]
 								if len(chMeta) >= 8 and chMeta[7] <> None:
@@ -1175,6 +1175,7 @@ def RecentListing(title):
 					
 				if dateObj >= filterDate and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session):
 					if Prefs['play_direct_from_list']:
+						isMovie = isChannelAMovie(channelUrl, genre)
 						if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 							rtmpVid = ' (rtmp) '
 						oc.add(playback.CreateVideoClipObject(
@@ -1183,7 +1184,7 @@ def RecentListing(title):
 							thumb = logoUrl,
 							summary = summaryStr + tvGuideSum,
 							session = session,
-							transcode = False))
+							transcode = False, dontUseURLServ=isMovie))
 					else:
 						if Client.Platform not in LIST_VIEW_CLIENTS:
 							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
@@ -1214,7 +1215,7 @@ def DisplayList(title, showimported='False', startRange=0):
 	session = common_fnc.getSession()
 	
 	if abortBool:
-		return ObjectContainer(header=title, message='Connection error or Server seems down !', title1 = 'Please wait')
+		return ObjectContainer(header=title, message='Connection error or Server seems down !!', title1 = 'Please wait')
 	
 	if Client.Product in DumbKeyboard.clients or UseDumbKeyboard():
 		DumbKeyboard(PREFIX, oc, Search,
@@ -1307,6 +1308,7 @@ def DisplayList(title, showimported='False', startRange=0):
 					if logoUrl <> None and logoUrl != 'Unknown':
 						if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
 							if Prefs['play_direct_from_list'] and False:
+								isMovie = isChannelAMovie(channelUrl, genre)
 								if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 									rtmpVid = ' (rtmp) '
 								oc.add(playback.CreateVideoClipObject(
@@ -1315,12 +1317,13 @@ def DisplayList(title, showimported='False', startRange=0):
 									thumb = logoUrl,
 									summary = summaryStr + tvGuideSum,
 									session = session,
-									transcode = False))
+									transcode = False, dontUseURLServ=isMovie))
 							else:
 								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
 					else:
 						if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
 							if Prefs['play_direct_from_list']:
+								isMovie = isChannelAMovie(channelUrl, genre)
 								if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 									rtmpVid = ' (rtmp) '
 								oc.add(playback.CreateVideoClipObject(
@@ -1329,12 +1332,13 @@ def DisplayList(title, showimported='False', startRange=0):
 									thumb = logoUrl,
 									summary = summaryStr + tvGuideSum,
 									session = session,
-									transcode = False))
+									transcode = False, dontUseURLServ=isMovie))
 							else:
 								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = R(ICON_SERIES)))
 				else:
 					if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
 						if Prefs['play_direct_from_list'] and False:
+							isMovie = isChannelAMovie(channelUrl, genre)
 							if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 								rtmpVid = ' (rtmp) '
 							oc.add(playback.CreateVideoClipObject(
@@ -1343,7 +1347,7 @@ def DisplayList(title, showimported='False', startRange=0):
 								thumb = logoUrl,
 								summary = summaryStr + tvGuideSum,
 								session = session,
-								transcode = False))
+								transcode = False, dontUseURLServ=isMovie))
 						else:
 							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = None))
 			
@@ -1591,7 +1595,7 @@ def DisplayPage(title, iRange, showimported='False', startRange=0):
 	session = common_fnc.getSession()
 	
 	if abortBool:
-		return ObjectContainer(header=title, message='Connection error or Server seems down !', title1='Error')
+		return ObjectContainer(header=title, message='Connection error or Server seems down !!', title1='Error')
 		
 	if Client.Product in DumbKeyboard.clients or UseDumbKeyboard():
 		DumbKeyboard(PREFIX, oc, Search,
@@ -1686,6 +1690,7 @@ def DisplayPage(title, iRange, showimported='False', startRange=0):
 					if logoUrl <> None and logoUrl != 'Unknown':
 						if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
 							if Prefs['play_direct_from_list']:
+								isMovie = isChannelAMovie(channelUrl, genre)
 								if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 									rtmpVid = ' (rtmp) '
 								oc.add(playback.CreateVideoClipObject(
@@ -1694,7 +1699,7 @@ def DisplayPage(title, iRange, showimported='False', startRange=0):
 									thumb = logoUrl,
 									summary = summaryStr + tvGuideSum,
 									session = session,
-									transcode = False))
+									transcode = False, dontUseURLServ=isMovie))
 								mmCount = mmCount+1
 							else:
 								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
@@ -1702,6 +1707,7 @@ def DisplayPage(title, iRange, showimported='False', startRange=0):
 					else:
 						if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
 							if Prefs['play_direct_from_list']:
+								isMovie = isChannelAMovie(channelUrl, genre)
 								if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 									rtmpVid = ' (rtmp) '
 								oc.add(playback.CreateVideoClipObject(
@@ -1710,7 +1716,7 @@ def DisplayPage(title, iRange, showimported='False', startRange=0):
 									thumb = logoUrl,
 									summary = summaryStr + tvGuideSum,
 									session = session,
-									transcode = False))
+									transcode = False, dontUseURLServ=isMovie))
 								mmCount = mmCount+1
 							else:
 								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = R(ICON_SERIES)))
@@ -1718,6 +1724,7 @@ def DisplayPage(title, iRange, showimported='False', startRange=0):
 				else:
 					if (showimported == 'False' or (showimported == 'True' and imported == 'Y')):
 						if Prefs['play_direct_from_list']:
+							isMovie = isChannelAMovie(channelUrl, genre)
 							if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 								rtmpVid = ' (rtmp) '
 							oc.add(playback.CreateVideoClipObject(
@@ -1726,7 +1733,7 @@ def DisplayPage(title, iRange, showimported='False', startRange=0):
 								thumb = logoUrl,
 								summary = summaryStr + tvGuideSum,
 								session = session,
-								transcode = False))
+								transcode = False, dontUseURLServ=isMovie))
 						else:
 							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = None))
 							mmCount = mmCount+1
@@ -2211,6 +2218,7 @@ def Search(query):
 				#Log(title + ' : ' + str(abortBool2))
 				#Log(mature)
 				if Prefs['play_direct_from_list']:
+					isMovie = isChannelAMovie(channelUrl, genre)
 					if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 						rtmpVid = ' (rtmp) '
 					oc.add(playback.CreateVideoClipObject(
@@ -2219,7 +2227,7 @@ def Search(query):
 						thumb = logoUrl,
 						summary = summaryStr + tvGuideSum,
 						session = session,
-						transcode = False))
+						transcode = False, dontUseURLServ=isMovie))
 				else:
 					if logoUrl <> None and logoUrl != 'Unknown':
 						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
@@ -2230,6 +2238,7 @@ def Search(query):
 					pass
 				else:
 					if Prefs['play_direct_from_list']:
+						isMovie = isChannelAMovie(channelUrl, genre)
 						if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 							rtmpVid = ' (rtmp) '
 						oc.add(playback.CreateVideoClipObject(
@@ -2238,7 +2247,7 @@ def Search(query):
 							thumb = logoUrl,
 							summary = summaryStr + tvGuideSum,
 							session = session,
-							transcode = False))
+							transcode = False, dontUseURLServ=isMovie))
 					else:
 						if logoUrl <> None and logoUrl != 'Unknown':
 							oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
@@ -2413,6 +2422,7 @@ def Bookmarks(title):
 				if (Dict[str(channelNum)] <> None and Dict[str(channelNum)] <> 'removed' and 'MyCustomSearch' not in Dict[str(channelNum)]) or (Dict[str(title+'-'+genre+'-'+lang+'-'+country)] <> None and Dict[str(title+'-'+genre+'-'+lang+'-'+country)] <> 'removed' and 'MyCustomSearch' not in Dict[str(title+'-'+genre+'-'+lang+'-'+country)]):
 					#Log("channelDesc--------- " + str(channelDesc) + " " + summaryStr + " " + dateStr + " " + str(logoUrl))
 					if Prefs['play_direct_from_list']:
+						isMovie = isChannelAMovie(channelUrl, genre)
 						if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 							rtmpVid = ' (rtmp) '
 						oc.add(playback.CreateVideoClipObject(
@@ -2421,7 +2431,7 @@ def Bookmarks(title):
 							thumb = logoUrl,
 							summary = summaryStr + tvGuideSum,
 							session = session,
-							transcode = False))
+							transcode = False, dontUseURLServ=isMovie))
 					else:
 							if logoUrl <> None and logoUrl != 'Unknown':
 								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = logoUrl))
@@ -2678,6 +2688,7 @@ def Pins(title):
 				else:
 					if 'removed' not in channelUrl:
 						if Prefs['play_direct_from_list']:
+							isMovie = isChannelAMovie(channelUrl, genre)
 							if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 								rtmpVid = ' (rtmp) '
 							oc.add(playback.CreateVideoClipObject(
@@ -2686,7 +2697,7 @@ def Pins(title):
 								thumb = logoUrl,
 								summary = summaryStr + tvGuideSum,
 								session = session,
-								transcode = False))
+								transcode = False, dontUseURLServ=isMovie))
 						else:
 							if logoUrl <> None and logoUrl != 'Unknown':
 								oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), title = title, thumb = logoUrl))
@@ -3152,6 +3163,7 @@ def MultiThreadedRecentListing2(filterDate, n1, n2, oc, threadn):
 				
 			if dateObj >= filterDate and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session):
 				if Prefs['play_direct_from_list']:
+					isMovie = isChannelAMovie(channelUrl, genre)
 					if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 						rtmpVid = ' (rtmp) '
 					oc.add(playback.CreateVideoClipObject(
@@ -3160,7 +3172,7 @@ def MultiThreadedRecentListing2(filterDate, n1, n2, oc, threadn):
 						thumb = logoUrl,
 						summary = summaryStr + tvGuideSum,
 						session = session,
-						transcode = False))
+						transcode = False, dontUseURLServ=isMovie))
 				else:
 					if Client.Platform not in LIST_VIEW_CLIENTS:
 						oc.add(DirectoryObject(key = Callback(ChannelPage, url = channelUrl, title = title, channelDesc = summaryStr, channelNum=channelNum, logoUrl=logoUrl, country=country, lang=lang, genre=genre, sharable=sharable, epgLink=epgLink, epgChID=epgInfo), tagline=dateStr, summary = summaryStr + tvGuideSum, title = title, thumb = Resource.ContentsOfURLWithFallback(url = logoUrl, fallback= R(ICON_SERIES))))
@@ -3299,6 +3311,7 @@ def MultiThreadedDisplayGenreLangConSort2(titleGen, type, n1, n2, oc, threadn, s
 				
 			if ((buildFilter == buildFilterM) and not ChannelFilters(active=active, onair=onair, lang=lang, country=country, mature=mature, session=session)):
 				if Prefs['play_direct_from_list']:
+					isMovie = isChannelAMovie(channelUrl, genre)
 					if 'rtmp:' in channelUrl or 'rtmpe:' in channelUrl:
 						rtmpVid = ' (rtmp) '
 					oc.append(playback.CreateVideoClipObject(
@@ -3307,7 +3320,7 @@ def MultiThreadedDisplayGenreLangConSort2(titleGen, type, n1, n2, oc, threadn, s
 						thumb = logoUrl,
 						summary = summaryStr + tvGuideSum,
 						session = session,
-						transcode = False))
+						transcode = False, dontUseURLServ=isMovie))
 				else:	
 					if Client.Platform not in LIST_VIEW_CLIENTS:
 						if logoUrl <> None and logoUrl != 'Unknown':
