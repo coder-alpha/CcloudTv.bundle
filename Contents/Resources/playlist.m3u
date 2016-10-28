@@ -17,3 +17,24 @@ http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_
 
 #EXTINF:-1 tvg-id="Big Buck Bunny (rtsp) 2008" tvg-name="Big Buck Bunny (rtsp) 2008" tvg-language="English" tvg-country="US" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_buck_bunny_poster_big.jpg" group-title="RTSP",Big Buck Bunny (rtsp) 2008
 rtsp://mpv.cdn3.bigCDN.com:554/bigCDN/mp4:bigbuckbunnyiphone_400.mp4
+
+#EXTINF:-1 tvg-id="AAj Tak" tvg-name="AAj Tak" tvg-language="Hindi" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-ZE5JmiUBlGo/AAAAAAAAAAI/AAAAAAAAAAA/JU-NHnMeaY8/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",AAj Tak
+https://www.youtube.com/watch?v=E9QXO5m_iS0
+
+#EXTINF:-1 tvg-id="India Today" tvg-name="India Today" tvg-language="English" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-_D48Q-O_Q48/AAAAAAAAAAI/AAAAAAAAAAA/r31m_qnzd7k/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",India Today
+https://www.youtube.com/watch?v=nAFBhWQPMU8
+
+#EXTINF:-1 tvg-id="DD NEWS 24X7" tvg-name="DD NEWS 24X7" tvg-language="English" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-To2bJ5pE_qo/AAAAAAAAAAI/AAAAAAAAAAA/U5H5BPelJts/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",DD NEWS 24X7
+https://www.youtube.com/watch?v=4fV31KJo05s
+
+#EXTINF:-1 tvg-id="Al Jazeera HD" tvg-name="Al Jazeera HD" tvg-language="English" tvg-country="US" tvg-logo="https://yt3.ggpht.com/-8IFpTckNBOQ/AAAAAAAAAAI/AAAAAAAAAAA/D3as0FRtFfo/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",Al Jazeera HD
+https://www.youtube.com/watch?v=1YnlX4CkPDY
+
+#EXTINF:-1 tvg-id="Sky News" tvg-name="Sky News" tvg-language="English" tvg-country="UK" tvg-logo="https://yt3.ggpht.com/-uYnyeu0wFpQ/AAAAAAAAAAI/AAAAAAAAAAA/VU2Ct3J_ZQw/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",Sky News
+https://www.youtube.com/watch?v=y60wDzZt8yg
+
+#EXTINF:-1 tvg-id="Khon2" tvg-name="Khon2" tvg-language="English" tvg-country="US" tvg-logo="http://i.imgur.com/hAtVwOJ.png" group-title="News",Khon2
+http://livestream.com/accounts/1858266/events/1647828
+
+#EXTINF:-1 tvg-id="Fox 5 Washington DC" tvg-name="Fox 5 Washington DC" tvg-language="English" tvg-country="US" tvg-logo="http://static.lakana.com/lakana-fox-global/theme/images/wttg/placeholder-square.jpg" group-title="News",Fox 5 Washington DC
+http://livestream.com/accounts/7240537/events/2778976

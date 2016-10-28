@@ -1,4 +1,5 @@
-import common, urllib2, string, random, base64, datetime, redirect_follower, playback, common
+import os, urllib2, string, random, base64, datetime 
+import common, redirect_follower, playback, common
 
 global_request_timeout = 10
 
@@ -92,6 +93,12 @@ def GetRedirectingUrl(url):
 	#Log("Redirecting url ----- : " + redirectUrl)
 	return redirectUrl
 	
+####################################################################################################
+
+@route(common.PREFIX + '/showmessage')
+def ShowMessage(title, message):
+	return ObjectContainer(header=title, message=message, title1=title)
+	
 @route(common.PREFIX + '/id_generator')
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
@@ -142,6 +149,9 @@ def getDeviceName():
 	else:
 		return 'UnknownPlexDeviceName'
 		
+def getPlexHeaders():
+	return str(Request.Headers)
+	
 ####################################################################################################
 # search array item's presence in string
 @route(common.PREFIX + "/arrayitemsinstring")
@@ -160,6 +170,8 @@ def ArrayItemsInString(arr, mystr):
 # https://github.com/Cigaras/IPTV.bundle
 #
 # Copyright © 2013-2015 Valdas Vaitiekaitis
+# Modified by CA, 2016
+#
 def GetAttribute(text, attribute, delimiter1 = '="', delimiter2 = '"'):
 	x = text.find(attribute)
 	if x > -1:
@@ -183,6 +195,11 @@ def GetAttribute(text, attribute, delimiter1 = '="', delimiter2 = '"'):
 		return retStr
 	else:
 		return ''
+
+#######################################################################################################
+# url decode		
+def urldecode(string):
+	return urllib2.unquote(string)
 		
 #######################################################################################################
 # base64 decode

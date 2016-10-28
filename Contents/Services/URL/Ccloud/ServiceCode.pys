@@ -1,4 +1,5 @@
 
+USER_AGENT = 'Mozilla5.0'
 
 ####################################################################################################
 def NormalizeURL(url):
@@ -14,11 +15,68 @@ def MetadataObjectForURL(url):
 	title = data['title']
 	summary = data['summary']
 	thumb = data['thumb']
+	content_rating = data['content_rating']
+	if content_rating == "None":
+		content_rating = None
+	
+	year = data['year']
+	if year == "None":
+		year = None
+	else:
+		year = int(year)
+		
+	studio = data['studio']
+	if studio == "None":
+		studio = None
+		
+	genres_a = []
+	genres = data['genres']
+	for g in genres.split(','):
+		if g != '':
+			genres_a.append(g.strip())
+		
+	writers_a = []
+	writers = data['writers']
+	for w in writers.split(','):
+		if w != '':
+			writers_a.append({'name': w.strip()})
+		
+	directors_a = []
+	directors = data['directors']
+	for d in directors.split(','):
+		if d != '':
+			directors_a.append({'name': d.strip()})
+		
+	roles_a = []
+	roles = data['roles']
+	for r in roles.split(','):
+		if r != '':
+			roles_a.append({'name': r.strip()})
+
+	
+	if data['rating'] != "None":
+		rating = float(data['rating'])
+	else:
+		rating = None
+		
+	if data['duration'] != "None":
+		duration = int(data['duration'])
+	else:
+		duration = None
 		
 	return VideoClipObject(
 		title = title,
 		url = furl,
 		summary = summary,
+		rating = rating,
+		duration = duration,
+		content_rating = content_rating,
+		studio = studio,
+		year = year,
+		genres = genres_a,
+		writers = writers_a,
+		directors = directors_a,
+		roles = roles_a,
 		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
 	)
 
@@ -38,7 +96,18 @@ def MediaObjectsForURL(url):
 				optimized_for_streaming = True,
 				parts = [PartObject(key=Callback(PlayVideo, url=furl))]
 			)
-		]	
+		]
+	elif '.m3u8' in furl:
+		return [
+			MediaObject(
+				protocol = 'hls',
+                container = 'mpegts',
+				audio_codec = AudioCodec.AAC,
+				audio_channels = 2,
+				optimized_for_streaming = True,
+				parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+			)
+		]
 	else:
 		return [
 			MediaObject(
@@ -54,11 +123,13 @@ def MediaObjectsForURL(url):
 ####################################################################################################
 @indirect
 def PlayVideo(url):
-
-	#return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url))
-		
-	return IndirectResponse(VideoClipObject, key=url)
+	http_headers = {'User-Agent': USER_AGENT}
+	if '.m3u8' in url:
+		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers)
+	else:
+		return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)
 
 ####################################################################################################
 def get_data(url):
 	return JSON.ObjectFromString(D(url.split('ccloudtv://')[1]))
+	

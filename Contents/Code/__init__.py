@@ -3,7 +3,7 @@
 #	cCloud TV | A Community based Social IPTV Service for Live TV, Movies, TV Shows & Radio
 #
 ###############################################################################################
-import common, common_fnc, updater, time, transcoder, share, myxmltvparser, guide_online, playback
+import common, common_fnc, updater, time, transcoder, share, myxmltvparser, guide_online, playback, livestreamer_fnc
 import re, urllib2, sys, os, json, math
 import datetime as DT
 from datetime import datetime
@@ -51,6 +51,7 @@ ICON_DK_ENABLE = "icon-dumbKeyboardE.png"
 ICON_DK_DISABLE = "icon-dumbKeyboardD.png"
 ICON_DISCOVER = "icon-discover.png"
 ICON_INFO = "icon-info.png"
+ICON_IMDB = "icon-imdb.png"
 
 # cache discovered links to reduce load on Google API
 CACHE_DISCOVER = {}
@@ -133,8 +134,7 @@ def Start():
 		transcoder.GetAllExtVlcInstances()
 		
 	if Prefs['debug']:
-		Log(common.TITLE + ' v.' + common.VERSION)
-	
+		Log(common.TITLE + ' v.' + common.VERSION)	
 	
 ######################################################################################
 # Menu hierarchy
@@ -148,6 +148,8 @@ def MainMenu():
 		Log('Plex-Platform: ' + common_fnc.getPlatform())
 		Log('Plex-Device: ' + common_fnc.getDevice())
 		Log('Plex-DeviceName: ' + common_fnc.getDeviceName())
+		Log("==========================")
+
 		
 	# Initialize here so that available for Pinned Channels
 	# Parse XML Tv Guide in separate thread
@@ -371,8 +373,9 @@ def ShowMenu(title, additionalURL=None):
 @route(PREFIX + "/showMenu2")
 def ShowMenu2(title, startRange=0):
 
-	if Dict['ParsingPrivThreadAlive'] == 'True':
-		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(Dict['ParsingPrivThreadAliveComp'] ) + '% done.', title1='Please wait')
+	prog = Dict['ParsingPrivThreadAliveComp']
+	if Dict['ParsingPrivThreadAlive'] == 'True' and int(prog) != 100:
+		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.', title1='Please wait')
 		
 	if len(IMPORT_BOOL) > 0:
 		oc = ObjectContainer(title2='Imported ('+IMPORT_BOOL[0]+') Channels')
@@ -571,6 +574,7 @@ def RefreshListing(doRefresh, additionalURL=None):
 						channels = page_data.split('||')
 					else:
 						channels.append(page_data)
+					CCLOUDTV_BOOL.append(str(len(channels)))
 					
 					# Parse XML Tv Guide in separate thread
 					Dict['xmlTvParserThreadAlive'] = 'True'
@@ -686,6 +690,7 @@ def RefreshListing(doRefresh, additionalURL=None):
 							except:
 								pass
 					
+					del CCLOUDTV_BOOL[:]
 					CCLOUDTV_BOOL.append(str(int(ch_count_array[0])))
 					if Prefs['debug']:
 						str(int(ch_count_array[0])) + ' cCloud Channels retrieved !'
@@ -1041,8 +1046,9 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 @route(PREFIX + "/showRecentMenu")
 def ShowRecentMenu(title):
 
-	if Dict['ParsingPrivThreadAlive'] == 'True':
-		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(Dict['ParsingPrivThreadAliveComp'] ) + '% done.', title1= 'Please wait')
+	prog = Dict['ParsingPrivThreadAliveComp']
+	if Dict['ParsingPrivThreadAlive'] == 'True' and int(prog) != 100:
+		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.', title1= 'Please wait')
 		
 	oc = ObjectContainer(title2=title)
 	
@@ -1206,8 +1212,9 @@ def RecentListing(title):
 @route(PREFIX + "/displaylist", allow_sync=True)
 def DisplayList(title, showimported='False', startRange=0):
 	
-	if Dict['ParsingPrivThreadAlive'] == 'True':
-		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(Dict['ParsingPrivThreadAliveComp'] ) + '% done.', title1 = 'Please wait')
+	prog = Dict['ParsingPrivThreadAliveComp']
+	if Dict['ParsingPrivThreadAlive'] == 'True' and int(prog) != 100:
+		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.', title1 = 'Please wait')
 		
 	oc = ObjectContainer(title2=title)
 
@@ -1371,8 +1378,9 @@ def DisplayList(title, showimported='False', startRange=0):
 @route(PREFIX + "/displaygenremenu")
 def DisplayGenreMenu(title, filter1=None, filter2=None, filter3=None):
 
-	if Dict['ParsingPrivThreadAlive'] == 'True':
-		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(Dict['ParsingPrivThreadAliveComp'] ) + '% done.', title1 = 'Please wait')
+	prog = Dict['ParsingPrivThreadAliveComp']
+	if Dict['ParsingPrivThreadAlive'] == 'True' and int(prog) != 100:
+		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.', title1 = 'Please wait')
 		
 	oc = ObjectContainer(title2=title)
 	for genre in GENRE_ARRAY:
@@ -1395,8 +1403,9 @@ def DisplayGenreMenu(title, filter1=None, filter2=None, filter3=None):
 @route(PREFIX + "/displaylanguagemenu")
 def DisplayLanguageMenu(title, filter1=None, filter2=None, filter3=None):
 
-	if Dict['ParsingPrivThreadAlive'] == 'True':
-		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(Dict['ParsingPrivThreadAliveComp'] ) + '% done.', title1 = 'Please wait')
+	prog = Dict['ParsingPrivThreadAliveComp']
+	if Dict['ParsingPrivThreadAlive'] == 'True' and int(prog) != 100:
+		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.', title1 = 'Please wait')
 		
 	oc = ObjectContainer(title2=title)
 	
@@ -1417,8 +1426,9 @@ def DisplayLanguageMenu(title, filter1=None, filter2=None, filter3=None):
 @route(PREFIX + "/displaycountrymenu")
 def DisplayCountryMenu(title, filter1=None, filter2=None, filter3=None):
 
-	if Dict['ParsingPrivThreadAlive'] == 'True':
-		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(Dict['ParsingPrivThreadAliveComp'] ) + '% done.', title1 = 'Please wait')
+	prog = Dict['ParsingPrivThreadAliveComp']
+	if Dict['ParsingPrivThreadAlive'] == 'True' and int(prog) != 100:
+		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.', title1 = 'Please wait')
 		
 	oc = ObjectContainer(title2=title)
 	oc2 = []
@@ -1586,8 +1596,9 @@ def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=
 @route(PREFIX + "/displaypage")
 def DisplayPage(title, iRange, showimported='False', startRange=0):
 
-	if Dict['ParsingPrivThreadAlive'] == 'True':
-		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(Dict['ParsingPrivThreadAliveComp'] ) + '% done.', title1 = 'Please wait')
+	prog = Dict['ParsingPrivThreadAliveComp']
+	if Dict['ParsingPrivThreadAlive'] == 'True' and int(prog) != 100:
+		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.', title1 = 'Please wait')
 		
 	oc = ObjectContainer(title2=title)
 	
@@ -1756,8 +1767,9 @@ def DisplayPage(title, iRange, showimported='False', startRange=0):
 @route(PREFIX + "/displaypagelist")
 def DisplayPageList(title, showimported='False', startRange=0):
 
-	if Dict['ParsingPrivThreadAlive'] == 'True':
-		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(Dict['ParsingPrivThreadAliveComp'] ) + '% done.')
+	prog = Dict['ParsingPrivThreadAliveComp']
+	if Dict['ParsingPrivThreadAlive'] == 'True' and int(prog) != 100:
+		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.')
 		
 	oc = ObjectContainer(title2=title)
 	
@@ -1868,6 +1880,15 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	tvGuideCurr = ''
 	rtmpVid = ''
 	art = ''
+	rating = None
+	duration = None
+	content_rating = None
+	year = None
+	studio = None
+	genres = ','
+	actors = ','
+	writers = ','
+	directors = ','
 	use_guide_button = False
 	
 	if epgChID == None or epgChID == 'Unknown':
@@ -1876,36 +1897,54 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	isMovie = isChannelAMovie(url, genre)
 	
 	if (listingUrl <> None and listingUrl != 'Unknown' and not Prefs['use_epg']) or isMovie:
-		try:
-			tvGuide = guide_online.GetListing(epgChID, url, listingUrl, country, lang, isMovie=isMovie)
-			if tvGuide == None:
-				tvGuide = []
-				if isMovie:
-					tvGuideSum = 'IMDb option not Enabled or Movie info Not Found'
-				else:
-					tvGuideSum = 'EPG Not Enabled'
-			elif not isMovie:
-				use_guide_button = True
-				
-			l = len(tvGuide)
-			sep = ' | '
-			if l > 0:
-				if not isMovie:
-					tvGuideCurr = unicode(' : ' + tvGuide[0]['showtitles'])
-				else:
-					sep = ' \n'
-					try:
-						if common_fnc.GetHttpStatus(logoUrl) not in common_fnc.GOOD_RESPONSE_CODES:
-							logoUrl = tvGuide[0]['img']
-					except:
-						pass
-			for x in xrange(l):
-				if tvGuide[x]['showtitles'] == 'Certification' and tvGuide[x]['showtimes'] == 'USA:R' and not Prefs['show_adult'] and Dict['AccessPin'+session] != Prefs['access_pin']:
+		#try:
+		tvGuide = guide_online.GetListing(epgChID, url, listingUrl, country, lang, isMovie=isMovie)
+		if tvGuide == None:
+			tvGuide = []
+			if isMovie:
+				tvGuideSum = 'IMDb option not Enabled or Movie info Not Found'
+			else:
+				tvGuideSum = 'EPG Not Enabled'
+		else:
+			use_guide_button = True
+			
+		l = len(tvGuide)
+		sep = ' | '
+		if l > 0:
+			if not isMovie:
+				tvGuideCurr = unicode(' : ' + tvGuide[0]['showtitles'])
+			else:
+				sep = ' \n'
+				try:
+					if common_fnc.GetHttpStatus(logoUrl) not in common_fnc.GOOD_RESPONSE_CODES:
+						logoUrl = tvGuide[0]['img']
+				except:
+					pass
+		for x in xrange(l):
+			if tvGuide[x]['showtitles'] == 'Certification':
+				content_rating = tvGuide[x]['showtimes'].strip('USA:')
+				if tvGuide[x]['showtimes'] == 'USA:R' and not Prefs['show_adult'] and Dict['AccessPin'+session] != Prefs['access_pin']:
 					return ObjectContainer(header=title, message=title + ' has a R certification and not available based on your access rights !', title1='Access Control')
-					
-				tvGuideSum += sep + tvGuide[x]['showtitles'] + ' : ' + tvGuide[x]['showtimes']
-		except:
-			pass
+			if tvGuide[x]['showtitles'] == 'Rating':
+				rating = float(tvGuide[x]['showtimes'].strip('/10').strip())
+			if tvGuide[x]['showtitles'] == 'Runtime':
+				duration = int(tvGuide[x]['showtimes'].strip('mins.').strip())*60*1000
+			if tvGuide[x]['showtitles'] == 'Year':
+				year = tvGuide[x]['showtimes']
+			if tvGuide[x]['showtitles'] == 'Distributors':
+				studio = tvGuide[x]['showtimes']
+			if tvGuide[x]['showtitles'] == 'Cast':
+				actors = tvGuide[x]['showtimes'] + ','
+			if tvGuide[x]['showtitles'] == 'Directors':
+				directors = tvGuide[x]['showtimes'] + ','
+			if tvGuide[x]['showtitles'] == 'Writers':
+				writers = tvGuide[x]['showtimes'] + ','
+			if tvGuide[x]['showtitles'] == 'Genres':
+				genres = tvGuide[x]['showtimes'] + ','
+				
+			tvGuideSum += sep + tvGuide[x]['showtitles'] + ' : ' + tvGuide[x]['showtimes']
+		#except:
+		#	pass
 	elif Prefs['use_epg'] and Dict['xmlTvParserThreadAlive'] == 'False' and Dict['xmlTvParserStatus'] == 'False':
 		tvGuideSum = 'Guide downloading or parsing caused an error. Please refer log file.'
 	elif Prefs['use_epg']:
@@ -1927,31 +1966,69 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	except:
 		pass
 		
-	try:
-		#Log("----------- url ----------------")
-		#Log(url)
-		if 'rtmp:' in url or 'rtmpe:' in url:
-			rtmpVid = ' (rtmp) '
+	#try:
+	#Log("----------- url ----------------")
+	#Log(url)
+	if 'rtmp:' in url or 'rtmpe:' in url:
+		rtmpVid = ' (rtmp) '
+	
+	if isMovie:
+		summary = tvGuideSum
+	else:
+		summary = channelDesc + ' | ' + tvGuideSum
 
-		oc.add(playback.CreateVideoClipObject(
-			url = url,
-			title = title + rtmpVid + tvGuideCurr,
-			thumb = thumb,
-			summary = channelDesc + ' | ' + tvGuideSum,
-			session = session,
-			transcode = transcode))
+	oc.add(playback.CreateVideoClipObject(
+		url = url,
+		title = title + rtmpVid + tvGuideCurr,
+		thumb = thumb,
+		summary = summary,
+		session = session,
+		transcode = transcode,
+		rating = rating,
+		content_rating = content_rating,
+		studio = studio,
+		year = year,
+		actors = actors,
+		writers = writers,
+		directors = directors,
+		genres = genres[0:len(genres)-1],
+		duration = duration))
 
-	except:
-		url = ""
+	#except:
+	#	url = ""
 
 	if not isMovie and use_guide_button:
 		oc.add(DirectoryObject(
-				key = Callback(guide_online.CreateListing, title=title, videoUrl=url, listingUrl=listingUrl, transcode=transcode, session=session, country=country, lang=lang, isMovie=isMovie),
+				key = Callback(guide_online.CreateListing, 
+				title=title, 
+				videoUrl=url, 
+				listingUrl=listingUrl, 
+				transcode=transcode, 
+				session=session, 
+				country=country, 
+				lang=lang, 
+				isMovie=isMovie),
 				title = "TV Guide",
 				summary = 'TV Guide for ' + title,
 				thumb = R(ICON_GUIDE)
 			))
-	
+	elif isMovie and use_guide_button:
+		oc.add(DirectoryObject(
+				key = Callback(guide_online.CreateIMDBListing, 
+				title=title, 
+				videoUrl=url, 
+				listingUrl=listingUrl, 
+				transcode=transcode, 
+				session=session, 
+				country=country, 
+				lang=lang, 
+				isMovie=isMovie, 
+				tvGuide=None),
+				title = "IMDb Info",
+				summary = 'IMDb Info for ' + title,
+				thumb = R(ICON_IMDB)
+			))
+			
 	if CheckBookmark(channelNum=channelNum, url=url, title = title, genre = genre, lang = lang, country = country):
 		oc.add(DirectoryObject(
 			key = Callback(RemoveBookmark, title = title, channelNum = channelNum, url = url, genre = genre, lang = lang, country = country),
@@ -2012,7 +2089,7 @@ def GetChannelThumb(url, logoUrl):
 	try:
 		if 'http' not in logoUrl:
 			logoUrl = R(ICON_SERIES)
-		if '.m3u8' in url:
+		if '.m3u8' in url and not livestreamer_fnc.CheckLivestreamer(url=url):
 			try:
 				Thread.Create(TimeoutChecker)
 				page = HTTP.Request(url, timeout = float(common_fnc.global_request_timeout)).content
@@ -2047,6 +2124,7 @@ def GetChannelThumb(url, logoUrl):
 				thumb = logoUrl
 		else:
 			resp = common_fnc.FollowRedirectGetHttpStatus(url)
+			#Log(resp)
 			if resp in common_fnc.GOOD_RESPONSE_CODES:
 				thumb = logoUrl
 	except:

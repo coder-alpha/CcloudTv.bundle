@@ -1,4 +1,4 @@
-import transcoder, common, common_fnc
+import transcoder, common, common_fnc, livestreamer_fnc
 import os, sys, re, time
 
 # clients that dont require rtmp transcoding
@@ -36,9 +36,51 @@ if res_folder_path not in sys.path:
 #
 ####################################################################################################
 @route(common.PREFIX + '/createvideoclipobject', allow_sync=True)
-def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False, dontUseURLServ=False):
+def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False, dontUseURLServ=False, rating=None, content_rating=None, duration=None, studio=None, year=None, genres=None, actors=None, writers=None, directors=None):
 	
+	if rating != None:
+		rating = float(rating)
+	if duration != None:
+		duration = int(duration)
+	if year != None:
+		year = int(year)
+	genres_a = []
+	if genres != None:
+		for g in genres.split(','):
+			if g != '':
+				genres_a.append(g.strip())
+			
+	writers_a = []
+	if writers != None:
+		for w in writers.split(','):
+			if w != '':
+				writers_a.append(w.strip())
+			
+	directors_a = []
+	if directors != None:
+		for d in directors.split(','):
+			if d != '':
+				directors_a.append(d.strip())
+		
+	roles_a = []
+	if actors != None:
+		for r in actors.split(','):
+			if r != '':
+				roles_a.append(r.strip())
+		
 	vco = ''
+	
+	is_streamlink = livestreamer_fnc.CheckLivestreamer(url=url)
+	if not inc_container and is_streamlink:
+		vco = livestreamer_fnc.Qualities(title=title, url=url, summary=summary, thumb=thumb, art=thumb, is_streamlink=is_streamlink)
+		if vco != None:
+			if Prefs['debug']:
+				Log("Using Livestreamer API")
+			return vco
+		else:
+			if Prefs['debug']:
+				Log("Not Using Livestreamer API")
+	
 	if '.mp3' in url or '.aac' in url or 'mmsh:' in url:
 		container = Container.MP4
 		audio_codec = AudioCodec.AAC
@@ -51,7 +93,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 			audio_codec = AudioCodec.AAC
 			
 		vco = TrackObject(
-			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ),
+			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
 			rating_key = url,
 			title = title,
 			thumb = thumb,
@@ -69,20 +111,30 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 		)
 	elif '.mp4' in url and '.m3u8' not in url and url.startswith('http'):
 		# we will base64 encode the url, so that any conflicting url service does not interfere
-		Log(url)
-		vco = VideoClipObject(
-			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb}))),
+		vco = MovieObject(
+			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb, "rating": rating, "duration": duration, "content_rating": content_rating, "studio": studio, "year": year, "genres": genres, "writers": writers, "directors": directors, "roles": actors}))),
 			title = title,
 			thumb = thumb,
+			rating = rating,
+			duration = duration,
+			content_rating = content_rating,
+			year = year,
+			studio = studio,
+			genres = genres_a,
 			summary = summary
 		)
 	elif common_fnc.ArrayItemsInString(MP4_VIDEOS, url) and '.m3u8' not in url and url.startswith('http'):
-		Log(url)
 		# we will base64 encode the url, so that any conflicting url service does not interfere
-		vco = VideoClipObject(
-			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb}))),
+		vco = MovieObject(
+			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb, "rating": rating, "duration": duration, "content_rating": content_rating, "studio": studio, "year": year, "genres": genres, "writers": writers, "directors": directors, "roles": actors}))),
 			title = title,
 			thumb = thumb,
+			rating = rating,
+			duration = duration,
+			content_rating = content_rating,
+			year = year,
+			studio = studio,
+			genres = genres_a,
 			summary = summary
 		)
 	elif '.m3u8' not in url and 'rtmp:' in url and transcode and Prefs['use_transcoder']: # transcode case
@@ -103,12 +155,14 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 			url = Prefs['transcode_server'] + session + '.m3u8'
 			
 		vco = VideoClipObject(
-			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, transcode=transcode, dontUseURLServ=dontUseURLServ),
+			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, transcode=transcode, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
 			#rating_key = url,
 			url = url,
 			title = title,
 			summary = summary,
 			thumb = thumb,
+			rating = rating,
+			duration = duration,
 			items = [
 				MediaObject(
 					#container = Container.MP4,	 # MP4, MKV, MOV, AVI
@@ -134,9 +188,11 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 			p = re.compile(ur'^((http[s]?|ftp):\/)?\/?([^:\/\s]+)((\/\w+)*\/)([\w\-\.]+[^#?\s]+)(.*)?(#[\w\-]+)?$')
 			remote_host = re.search(p, url).group(3)
 			vco = VideoClipObject(
-				url = remote_host + "ccloudtv2://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb}))),
+				url = remote_host + "ccloudtv2://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb, "rating": rating, "duration": duration}))),
 				title = title,
 				summary = summary,
+				rating = rating,
+				duration = duration,
 				thumb = thumb
 			)
 		else:
@@ -149,12 +205,14 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 				parts.append(po)
 				
 			vco = VideoClipObject(
-				key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ),
+				key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
 				rating_key = url,
 				#url = url,
 				title = title,
 				summary = summary,
 				thumb = thumb,
+				rating = rating,
+				duration = duration,
 				items = [
 					MediaObject(
 						#container = Container.MP4,	 # MP4, MKV, MOV, AVI

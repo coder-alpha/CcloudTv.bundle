@@ -19,6 +19,13 @@
 				<string>^ccloudtv2\:\/\/.+</string>
 			</array>
 		</dict>
+		<key>Livestreamer</key>
+		<dict>
+			<key>URLPatterns</key>
+			<array>
+				<string>^livestreamerccloud\:\/\/.+</string>
+			</array>
+		</dict>
 	</dict>
 </dict>
 </plist>

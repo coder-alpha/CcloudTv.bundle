@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+USER_AGENT = 'Mozilla5.0'
+
+def fix_url(url):
+	url = url.replace('%7C', '|')  # some clients % encode the '|' but we need it to split
+	return url
+
+def split_url(url):
+	return [s.split('|') for s in url.split('livestreamerccloud://')[-1].split('|||')[1].split('||')]
+	
+def MetadataObjectForURL(url):
+
+	slist = url.split('livestreamerccloud://')[-1].split('|||')
+	title, summary, url, thumb, art = Regex(r'^title\=(.+)\,summary\=(.*)\,url\=(.*)\,thumb\=(.*)\,art\=(.*)$').search(slist[0]).groups()
+	summary = JSON.ObjectFromString(D(summary))
+	
+	return VideoClipObject(
+		title=title,
+		summary=summary,
+		thumb=thumb if thumb else None,
+		art=art if art else None
+	)
+
+def MediaObjectsForURL(url):
+	fmt_dict = {
+		'ultra': '1080', 'high': '720', 'medium': '480', 'mid': '480',
+		'low': '320', 'mobile': '240'
+		}
+	mo = list()
+	streams = list()
+	furl = split_url(fix_url(url))
+	for stream_type, quality, stream_url in furl:
+		if Regex(r'(audio|best|worst|source)').search(quality):
+			continue
+		rq = Regex(r'^(\d+)p').search(quality)
+		if (stream_type == "HLSStream") or (stream_type == "HTTPStream"):
+			if rq or (quality in fmt_dict):
+				quality = rq.group(1) if rq else fmt_dict[quality]
+				streams.append((stream_type, int(quality), stream_url))
+
+	if not streams:
+		raise Ex.MediaNotAvailable
+		
+	slist = fix_url(url).split('livestreamerccloud://')[-1].split('|||')
+	title, summary, refurl, thumb, art = Regex(r'^title\=(.+)\,summary\=(.*)\,url\=(.*)\,thumb\=(.*)\,art\=(.*)$').search(slist[0]).groups()
+	refurl = JSON.ObjectFromString(D(refurl))
+		
+	refurl = refurl
+	# data = get_data(url)
+	# refurl = data['url']
+
+	for st, q, su in reversed(Util.ListSortedByKey(streams, 1)):
+		if st == "HLSStream":
+			mo.append(MediaObject(
+				protocol='hls',
+				container='mpegts',
+				video_resolution=q,
+				video_codec=VideoCodec.H264,
+				audio_codec=AudioCodec.AAC,
+				audio_channels=2,
+				optimized_for_streaming=True,
+				parts=[PartObject(key=Callback(PlayHLS, url=su, refurl=refurl, ext='m3u8'))]
+				))
+		elif st == "HTTPStream":
+			mo.append(MediaObject(
+				container=Container.MP4,
+				video_resolution=q,
+				video_codec=VideoCodec.H264,
+				audio_codec=AudioCodec.AAC,
+				audio_channels=2,
+				optimized_for_streaming=True,
+				parts=[PartObject(key=Callback(PlayHTTPStream, url=su, refurl=refurl))]
+				))
+	if mo:
+		return mo
+	raise Ex.MediaNotAvailable
+
+@indirect
+def PlayHLS(url, refurl, **kwargs):
+	http_headers = {'User-Agent': USER_AGENT, 'Referer': refurl}
+	return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers)
+
+@indirect
+def PlayHTTPStream(url, refurl, **kwargs):
+	http_headers = {'User-Agent': USER_AGENT, 'Referer': refurl}
+	return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)

@@ -112,13 +112,11 @@ def CreateListing(title, videoUrl, listingUrl, transcode, session, country, lang
 			vUrl = videoUrl.replace('?','?n='+str(x)+'&')
 		else:
 			vUrl = videoUrl + '?n='+str(x)
-		oc.add(playback.CreateVideoClipObject(
-			url = vUrl,
+		oc.add(DirectoryObject(
+			key = Callback(common_fnc.ShowMessage, title=tvGuide[x]['showtitles'], message=tvGuide[x]['summary']),
 			title = tvGuide[x]['showtitles'] + ' - ' + tvGuide[x]['showtimes'],
 			thumb = Resource.ContentsOfURLWithFallback(url = tvGuide[x]['img'], fallback= R(ICON_SERIES)),
-			summary = tvGuide[x]['summary'],
-			session = session,
-			transcode = transcode
+			summary = tvGuide[x]['summary']
 		))
 
 	return oc
@@ -127,6 +125,40 @@ def CreateListing(title, videoUrl, listingUrl, transcode, session, country, lang
 # Using http://imdbpy.sourceforge.net/
 # Needs to be available under ~/Libraries/Shared/ folder
 #
+@route(common.PREFIX + '/createimdblisting')
+def CreateIMDBListing(title, videoUrl, listingUrl, transcode, session, country, lang, isMovie=True, tvGuide=None):
+
+	if tvGuide == None or len(tvGuide) == 0:
+		tvGuide = GetImdbData(title, videoUrl, listingUrl, country, lang)
+	if tvGuide == None:
+		return ObjectContainer(header='IMDb Info Unavailable', message='IMDb Info Unavailable for ' + title, title1='IMDb Info Unavailable')
+	oc = ObjectContainer(title2=title + ' IMDb Info')
+	vUrl = videoUrl
+	l = len(tvGuide)
+	
+	for x in xrange(l):
+	
+		if '?' in videoUrl:
+			vUrl = videoUrl.replace('?','?n='+str(x)+'&')
+		else:
+			vUrl = videoUrl + '?n='+str(x)
+		oc.add(DirectoryObject(
+			key = Callback(common_fnc.ShowMessage, title=tvGuide[x]['showtitles'], message=tvGuide[x]['showtimes']),
+			title = tvGuide[x]['showtitles'],
+			thumb = Resource.ContentsOfURLWithFallback(url = tvGuide[x]['img'], fallback= R(ICON_SERIES)),
+			summary = tvGuide[x]['showtimes']
+		))
+		# oc.add(playback.CreateVideoClipObject(
+			# url = vUrl,
+			# title = tvGuide[x]['showtitles'],
+			# thumb = Resource.ContentsOfURLWithFallback(url = tvGuide[x]['img'], fallback= R(ICON_SERIES)),
+			# summary = tvGuide[x]['showtimes'],
+			# session = session,
+			# transcode = transcode
+		# ))
+
+	return oc
+
 @route(common.PREFIX + '/getimdbdata')
 def GetImdbData(title, videoUrl, url, country, lang):
 
@@ -188,6 +220,22 @@ def GetImdbData(title, videoUrl, url, country, lang):
 		pass
 		
 	try:
+		#Log( str(the_unt['genres']) )
+		genres = ''
+		x=0
+		for ca in the_unt['genres']:
+			genres += ca
+			if x == len(the_unt['genres'])-1:
+				break
+			else:
+				genres += ', '
+			x += 1
+		guideVals[i] = {'showtitles': 'Genres', 'showtimes': (genres), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
 		#Log( str(the_unt['cast']) )
 		cast = ''
 		x=0
@@ -198,7 +246,60 @@ def GetImdbData(title, videoUrl, url, country, lang):
 			else:
 				cast += ', '
 			x += 1
-		guideVals[i] = {'showtitles': 'Cast', 'showtimes': unicode(cast), 'img': cover_url}
+		guideVals[i] = {'showtitles': 'Cast', 'showtimes': (cast), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( str(the_unt['writers']) )
+		writers = ''
+		x=0
+		for ca in the_unt['writer']:
+			writers += ca['name']
+			if x == len(the_unt['writer'])-1:
+				break
+			else:
+				writers += ', '
+			x += 1
+		guideVals[i] = {'showtitles': 'Writers', 'showtimes': (writers), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( str(the_unt['director']) )
+		directors = ''
+		x=0
+		for ca in the_unt['director']:
+			directors += ca['name']
+			if x == len(the_unt['director'])-1:
+				break
+			else:
+				directors += ', '
+			x += 1
+		guideVals[i] = {'showtitles': 'Directors', 'showtimes': (directors), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( str(the_unt['distributors']) )
+		distributors = ''
+		x=0
+		for ca in the_unt['distributors']:
+			distributors += ca['name']
+			break
+			x += 1
+		guideVals[i] = {'showtitles': 'Distributors', 'showtimes': unicode(distributors), 'img': cover_url}
+		i+=1
+	except:
+		pass
+		
+	try:
+		#Log( the_unt['year'] )
+		year = the_unt['year']
+		guideVals[i] = {'showtitles': 'Year', 'showtimes': unicode(year), 'img': cover_url}
 		i+=1
 	except:
 		pass
@@ -211,6 +312,8 @@ def GetImdbData(title, videoUrl, url, country, lang):
 			i+=1
 	except:
 		pass
+		
+	#Log(str(the_unt.keys()))
 		
 	return guideVals
 	

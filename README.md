@@ -51,7 +51,7 @@ Known Issues
 Acknowledgements
 ==============
 
-- Credits to [cCloud TV BETA | Popcorntime for LIVE TV an open source project] (https://github.com/imbane/imbane.github.io)
+- Credits to [cCloud TV | Popcorntime for LIVE TV an open source project] (https://github.com/imbane/imbane.github.io)
 - Credits to [Cigaras, Valdas Vaitiekaitis] (https://forums.plex.tv/discussion/83083/rel-iptv-bundle-plugin-that-plays-iptv-streams-from-a-m3u-playlist/p1): IPTV (This plugins uses some parts)
 - Credits to [SharkOne] (http://forums.plex.tv/discussion/102253/rel-bittorrent-channel/p1): (Some parts of Channel updater)
 - Credits to [zombian] (http://forums.plex.tv/profile/zombian) for plugin icons
@@ -60,4 +60,5 @@ Acknowledgements
 - Credits to [coryo123] (https://forums.plex.tv/discussion/194503) (DumbTools-for-Plex)
 - Credits to [Filippo Valsorda] (https://github.com/FiloSottile) (Redirect Follower)
 - Credits to [IMDbPY] (http://imdbpy.sourceforge.net/index.html) (IMDb scrapper)
-- Thanks to [Twoure] (https://github.com/Twoure), [Shopgirl] (https://github.com/shopgirl284) and many others I have had discussions, read their posts and borrowed code.
+- Credits to [Livestreamer] (http://docs.livestreamer.io/) & [Streamlink] (https://streamlink.github.io/) a fork of the former.
+- Thanks to [Twoure] (https://github.com/Twoure), [Shopgirl284] (https://github.com/shopgirl284), [coryo123] (https://forums.plex.tv/discussion/194503) and many others I have had discussions, read their posts and borrowed code.
