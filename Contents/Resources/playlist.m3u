@@ -15,9 +15,6 @@ http://nasatv-lh.akamaihd.net/i/NASA_101@319270/master.m3u8
 #EXTINF:-1 tvg-id="Big Buck Bunny 2008" tvg-name="Big Buck Bunny 2008" tvg-language="English" tvg-country="US" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_buck_bunny_poster_big.jpg" group-title="OnDemandMovies",Big Buck Bunny 2008
 http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4
 
-#EXTINF:-1 tvg-id="Big Buck Bunny (rtsp) 2008" tvg-name="Big Buck Bunny (rtsp) 2008" tvg-language="English" tvg-country="US" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_buck_bunny_poster_big.jpg" group-title="RTSP",Big Buck Bunny (rtsp) 2008
-rtsp://mpv.cdn3.bigCDN.com:554/bigCDN/mp4:bigbuckbunnyiphone_400.mp4
-
 #EXTINF:-1 tvg-id="AAj Tak" tvg-name="AAj Tak" tvg-language="Hindi" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-ZE5JmiUBlGo/AAAAAAAAAAI/AAAAAAAAAAA/JU-NHnMeaY8/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",AAj Tak
 https://www.youtube.com/watch?v=E9QXO5m_iS0
 
