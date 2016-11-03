@@ -1,9 +1,11 @@
 ################################################################################
 TITLE = "cCloud TV | A Community based Social IPTV Service for Live TV, Movies, TV Shows & Radio"
-VERSION = '0.19' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.20' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/CcloudTv.bundle'
 PREFIX = "/video/ccloudtv"
 ################################################################################
+
+USER_AGENT = 'Mozilla5.0'
 
 COUNTRY_ARRAY_LIST = {'afghanistan': 'af',
  'albania': 'al',

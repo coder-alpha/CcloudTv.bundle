@@ -4,7 +4,7 @@ import json
 
 MY_TOKEN = "UTBFdFZHOXJaVzQ9"
 data = "test data"
-COMMIT_URL = "aHR0cDovLzk0LjIzLjM1LjQyL2NDbG91ZFR2L1BsZXhDb21taXQucGhw"
+COMMIT_URL = "aHR0cDovL3d3dy5sZXR0aGVnYW1lc2JlZy5pbi9jYS9QbGV4Q29tbWl0LnBocA=="
 
 ARRAY_COMITTED_URLS = []
 
@@ -27,7 +27,7 @@ def commit(curl, data):
 				auth = elems.xpath(".//div[@class='validate']//@value")[0]
 			except:
 				auth = None
-			if 'Ready for cCloud TV Commit' in page and auth <> None:
+			if 'Ready for cCloud TV Commit' in page and auth <> None and len(auth) == 32:
 				content = common_fnc.encode(data)
 				#Log("content = " + content)
 				# make commit

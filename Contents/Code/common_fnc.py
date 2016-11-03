@@ -1,4 +1,5 @@
-import common, urllib2, string, random, base64, datetime, redirect_follower
+import os, urllib2, string, random, base64, datetime 
+import common, redirect_follower, playback, common
 
 global_request_timeout = 10
 
@@ -9,12 +10,36 @@ GOOD_RESPONSE_CODES = ['200','206']
 @route(common.PREFIX + '/gethttpstatus')
 def GetHttpStatus(url):
 	try:
-		conn = urllib2.urlopen(url, timeout = global_request_timeout)
-		resp = str(conn.getcode())
-	except StandardError:
+		headers = {'User-Agent': common.USER_AGENT,
+		   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+		   'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+		   'Accept-Encoding': 'none',
+		   'Accept-Language': 'en-US,en;q=0.8',
+		   'Connection': 'keep-alive',
+		   'Referer': url}
+	   
+		if '|' in url:
+			url_split = url.split('|')
+			url = url_split[0]
+			headers['Referer'] = url
+			for params in url_split:
+				if '=' in params:
+					param_split = params.split('=')
+					param = param_split[0].strip()
+					param_val = urllib2.quote(param_split[1].strip(), safe='/=&')
+					headers[param] = param_val
+
+		if 'http://' in url or 'https://' in url:
+			req = urllib2.Request(url, headers=headers)
+			conn = urllib2.urlopen(req, timeout=global_request_timeout)
+			resp = str(conn.getcode())
+		else:
+			resp = '200'
+	except Exception as e:
 		resp = '0'
-	if Prefs['debug']:
-		Log(url +' : HTTPResponse = '+ resp)
+		if Prefs['debug']:
+			Log('Error common_fnc.py > GetHttpStatus: ' + str(e))
+			Log(url +' : HTTPResponse = '+ resp)
 	return resp
 	
 
@@ -26,10 +51,11 @@ def FollowRedirectGetHttpStatus(url):
 		response = redirect_follower.GetRedirect(url,global_request_timeout)
 		if response <> None:
 			resp = str(response.getcode())
-	except:
+	except Exception as e:
 		resp = '0'
-	if Prefs['debug']:
-		Log(url +' : HTTPResponse = '+ resp)
+		if Prefs['debug']:
+			Log('Error common_fnc.py > FollowRedirectGetHttpStatus: ' + str(e))
+			Log(url +' : HTTPResponse = '+ resp)
 	return resp
 	
 ####################################################################################################
@@ -44,10 +70,10 @@ def GetRedirector(url):
 			#page = urllib2.urlopen(url, timeout = global_request_timeout)
 			#redirectUrl = page.geturl()
 			redirectUrl = GetRedirectingUrl(url)
-	except:
+	except Exception as e:
+		if Prefs['debug']:
+			Log('Error common_fnc.py > GetRedirector: ' + str(e))
 		redirectUrl = url
-	if Prefs['debug'] and url != redirectUrl:
-		Log(url + "Redirecting to : " + redirectUrl)
 	return redirectUrl
 	
 ####################################################################################################
@@ -66,6 +92,12 @@ def GetRedirectingUrl(url):
 			
 	#Log("Redirecting url ----- : " + redirectUrl)
 	return redirectUrl
+	
+####################################################################################################
+
+@route(common.PREFIX + '/showmessage')
+def ShowMessage(title, message):
+	return ObjectContainer(header=title, message=message, title1=title)
 	
 @route(common.PREFIX + '/id_generator')
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
@@ -117,6 +149,9 @@ def getDeviceName():
 	else:
 		return 'UnknownPlexDeviceName'
 		
+def getPlexHeaders():
+	return str(Request.Headers)
+	
 ####################################################################################################
 # search array item's presence in string
 @route(common.PREFIX + "/arrayitemsinstring")
@@ -135,6 +170,8 @@ def ArrayItemsInString(arr, mystr):
 # https://github.com/Cigaras/IPTV.bundle
 #
 # Copyright © 2013-2015 Valdas Vaitiekaitis
+# Modified by CA, 2016
+#
 def GetAttribute(text, attribute, delimiter1 = '="', delimiter2 = '"'):
 	x = text.find(attribute)
 	if x > -1:
@@ -142,9 +179,27 @@ def GetAttribute(text, attribute, delimiter1 = '="', delimiter2 = '"'):
 		z = text.find(delimiter2, y)
 		if z == -1:
 			z = len(text)
-		return unicode(text[y:z].strip())
+		
+		retStr = unicode(text[y:z].strip())
+		if attribute.lower() != 'tvg-logo' and 'http' in retStr:
+			y = text.find('=', x + len(attribute)) + len(' ')
+			z = text.find(' ', y)
+			if z == -1:
+				z = len(text)
+			retStr = unicode(text[y:z].strip())
+
+		if '=' in retStr:
+			retStr = retStr.split('=')[1]
+		if ',' in retStr:
+			retStr = retStr.split(',')[0]
+		return retStr
 	else:
 		return ''
+
+#######################################################################################################
+# url decode		
+def urldecode(string):
+	return urllib2.unquote(string)
 		
 #######################################################################################################
 # base64 decode
@@ -172,6 +227,7 @@ def getRawPastebinLink(url):
 # Gets the raw Pastebin link
 def getDatePastebinLink(content):
 	try:
+		content = content.strip('Untitled. a guest ')
 		date = str(content.split('<b>')[0].strip())
 		if 'hour' in date:
 			dt = date.split(' ')
@@ -199,3 +255,5 @@ def month_string_to_number(string):
 		'dec':12
 	}
 	return m[string]
+	
+#######################################################################################################

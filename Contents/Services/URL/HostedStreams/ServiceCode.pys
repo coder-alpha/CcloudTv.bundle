@@ -1,0 +1,50 @@
+
+USER_AGENT = 'Mozilla5.0'
+
+####################################################################################################
+def NormalizeURL(url):
+
+	return url
+
+####################################################################################################
+def MetadataObjectForURL(url):
+		
+	data = get_data(url)
+	
+	furl = data['url']
+	title = data['title']
+	summary = data['summary']
+	thumb = data['thumb']
+		
+	return VideoClipObject(
+		title = title,
+		url = furl,
+		summary = summary,
+		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
+	)
+
+####################################################################################################
+def MediaObjectsForURL(url):
+
+	data = get_data(url)
+	furl = data['url']
+	
+	return [
+		MediaObject(
+			audio_channels=2,
+			parts=[PartObject(
+				key=HTTPLiveStreamURL(Callback(PlayVideo, url=furl))
+				)]
+			)
+		]
+
+####################################################################################################
+@indirect
+def PlayVideo(url, **kwargs):
+	
+	http_headers = {'User-Agent': USER_AGENT}
+	return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)
+
+####################################################################################################
+def get_data(url):
+	return JSON.ObjectFromString(D(url.split('ccloudtv2://')[1]))

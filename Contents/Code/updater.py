@@ -1,7 +1,8 @@
 ################################################################################
-import common, re, urllib, os
+import common, re, urllib2, os
 
 ICON_OK = "icon-ok.png"
+ICON_DEV = "icon-dev-ver.png"
 ICON_WARNING = "icon-warning.png"
 ICON_ERROR = "icon-error.png"
 ICON_UPDATER = "icon-updater.png"
@@ -19,7 +20,12 @@ def menu(title):
 	ver, version_result, version_result_str, version_result_summary, tag = test_version()
 	url = 'https://github.com/{0}/archive/{1}.zip'.format(common.GITHUB_REPOSITORY, tag)
 	oc.add(DirectoryObject(key=Callback(update, url=url, ver=ver), title='Plugin version: {0}'.format(version_result_str), summary=version_result_summary, thumb=get_test_thumb(version_result)))
+	
 	oc.add(DirectoryObject(key=Callback(updateold,title='Older Releases (Pre '+ver+')', feed=FEED_URL, ver=ver), title= 'Pre '+ ver + ' Releases', summary='Update to an Older Release. Please note an older release might not have updater support.', thumb=R(ICON_RELEASES)))
+	
+	dev_url = 'https://github.com/{0}/archive/{1}.zip'.format(common.GITHUB_REPOSITORY, 'dev')
+	if GetHttpStatus(dev_url) == '200':
+		oc.add(DirectoryObject(key=Callback(update, url=dev_url, ver='/dev branch'), title='Plugin version: /dev', summary='Update plugin to /dev branch', thumb=R(ICON_DEV)))
 	
 	return oc
 
@@ -27,7 +33,7 @@ def menu(title):
 def get_latest_version():
 	try:
 		release_feed_url = ('https://github.com/{0}/releases.atom'.format(common.GITHUB_REPOSITORY))
-		release_feed_data = RSS.FeedFromURL(release_feed_url, cacheTime=0, timeout=10)
+		release_feed_data = RSS.FeedFromURL(release_feed_url, cacheTime=0, timeout=15)
 		link = release_feed_data.entries[0].link
 		tags = link.split('/')
 		tag = tags[len(tags)-1]
@@ -35,22 +41,18 @@ def get_latest_version():
 		return (release_feed_data.entries[0].title, summary, tag)
 	except Exception as exception:
 		Log.Error('Checking for new releases failed: {0}'.format(repr(exception)))
-		return (None, None, None)
 
 ################################################################################
 def update_available():
-	try:
-		latest_version_str, summ, tag = get_latest_version()
-		latest_version_str = getOnlyVersionNumber(latest_version_str)
-		
-		if latest_version_str:
-			#latest_version  = map(int, latest_version_str.split('.'))
-			#current_version = map(int, common.VERSION.split('.'))
-			latest_version  = latest_version_str
-			current_version = common.VERSION
-			return (float(latest_version) > float(current_version), latest_version_str, summ, tag)
-	except:
-		pass
+	latest_version_str, summ, tag = get_latest_version()
+	latest_version_str = getOnlyVersionNumber(latest_version_str)
+	
+	if latest_version_str:
+		#latest_version  = map(int, latest_version_str.split('.'))
+		#current_version = map(int, common.VERSION.split('.'))
+		latest_version  = latest_version_str
+		current_version = common.VERSION
+		return (float(latest_version) > float(current_version), latest_version_str, summ, tag)
 	return (False, None, None, None)
 
 ################################################################################
@@ -80,10 +82,14 @@ def update(url, ver):
 						Core.storage.save(full, data)
 					else:
 						Core.storage.save(full, data)
+			
+			# Not exactly sure why this resolves issue on Ubuntu
+			Thread.Create(update2,{},url,ver)
+			
 		except Exception as exception:
 			msg = 'Error: ' + str(exception)
 			msgH = 'Update failed'
-		
+				
 		try:
 			os.remove(zip_data)
 		except Exception as exception:
@@ -92,6 +98,47 @@ def update(url, ver):
 		return ObjectContainer(header=msgH, message=msg)
 	else:
 		return ObjectContainer(header='Update failed', message='Version not found !')
+################################################################################
+
+@route(common.PREFIX + '/update2')
+def update2(url, ver):
+		
+	if ver:
+		msg = 'Plugin updated to version {0}'.format(ver)
+		msgH = 'Update successful'
+		try:
+			zip_data = Archive.ZipFromURL(url)
+			
+			for name in zip_data.Names():
+				data	= zip_data[name]
+				parts   = name.split('/')
+				shifted = Core.storage.join_path(*parts[1:])
+				full	= Core.storage.join_path(Core.bundle_path, shifted)
+
+				if '/.' in name:
+					continue
+
+				if name.endswith('/'):
+					Core.storage.ensure_dirs(full)
+				else:
+					if Core.storage.file_exists(full):
+						os.remove(full)
+						Core.storage.save(full, data)
+					else:
+						Core.storage.save(full, data)
+		except Exception as exception:
+			msg = 'Error: ' + str(exception)
+			msgH = 'Update failed'
+				
+		try:
+			os.remove(zip_data)
+		except Exception as exception:
+			pass
+		
+		pass
+	else:
+		pass
+
 
 ################################################################################
 @route(common.PREFIX + '/updateold')
@@ -167,3 +214,23 @@ def cleanSummary(summary):
 	summary = summary.replace('<br/>',' - ')
 	summary = summary.replace('&amp;','&')
 	return summary.lstrip()
+	
+####################################################################################################
+# Get HTTP response code (200 == good)
+def GetHttpStatus(url):
+	try:
+		headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0',
+       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+       'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+       'Accept-Encoding': 'none',
+       'Accept-Language': 'en-US,en;q=0.8',
+       'Connection': 'keep-alive',
+	   'Referer': url}
+	   
+		req = urllib2.Request(url, headers=headers)
+		conn = urllib2.urlopen(req, timeout=10)
+		resp = str(conn.getcode())
+	except Exception as e:
+		resp = '0'
+		Log('Error updater.py > GetHttpStatus: ' + str(e))
+	return resp

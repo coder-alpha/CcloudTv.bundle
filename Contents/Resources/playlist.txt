@@ -1,3 +1,11 @@
-1;NDTV;News;India;English;http://ndtv.live-s.cdn.bitgravity.com/cdn-live-b7/_definst_/ndtv/live/ndtv247live.smil/playlist.m3u8;https://pbs.twimg.com/profile_images/575304317/logo_ndtv_news_400x400.png;02/15/2016;http://www.locatetv.com/listings/ndtv-24-7||
-2;Bloomberg;News;US;English;http://cdn3.videos.bloomberg.com/btv/us/master.m3u8;http://cdn-img.easyicon.net/png/11264/1126483.gif;02/15/2016||
-3;Nasa TV;Documentary;US;English;http://nasatv-lh.akamaihd.net/i/NASA_101@319270/master.m3u8;http://cdn-img.easyicon.net/png/11264/1126483.gif;02/15/2016
+1;NDTV;News;India;English;http://ndtv.live-s.cdn.bitgravity.com/cdn-live-b7/_definst_/ndtv/live/ndtv247live.smil/playlist.m3u8;https://pbs.twimg.com/profile_images/575304317/logo_ndtv_news_400x400.png;02/15/2016;http://www.locatetv.com/listings/ndtv-24-7;NDTV24x7||
+2;Bloomberg;News;US;English;http://cdn3.videos.bloomberg.com/btv/us/master.m3u8;http://cdn-img.easyicon.net/png/11264/1126483.gif;02/15/2016;Bloomberg TV (BTV)||
+3;Nasa TV;Documentary;US;English;http://nasatv-lh.akamaihd.net/i/NASA_101@319270/master.m3u8;http://cdn-img.easyicon.net/png/11264/1126483.gif;02/15/2016;NASA Television (NASA)||
+4;Big Buck Bunny 2008;OnDemandMovies;US;English;http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4;https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_buck_bunny_poster_big.jpg;09/29/2016;;Big Buck Bunny 2008||
+5;AAj Tak;News;IN;Hindi;https://www.youtube.com/watch?v=E9QXO5m_iS0;https://yt3.ggpht.com/-ZE5JmiUBlGo/AAAAAAAAAAI/AAAAAAAAAAA/JU-NHnMeaY8/s88-c-k-no-mo-rj-c0xffffff/photo.jpg;;AAj Tak||
+6;India Today;News;IN;English;https://www.youtube.com/watch?v=nAFBhWQPMU8;https://yt3.ggpht.com/-_D48Q-O_Q48/AAAAAAAAAAI/AAAAAAAAAAA/r31m_qnzd7k/s88-c-k-no-mo-rj-c0xffffff/photo.jpg;;India Today||
+7;DD NEWS 24X7;News;IN;Hindi;https://www.youtube.com/watch?v=4fV31KJo05s;https://yt3.ggpht.com/-To2bJ5pE_qo/AAAAAAAAAAI/AAAAAAAAAAA/U5H5BPelJts/s88-c-k-no-mo-rj-c0xffffff/photo.jpg;;DD NEWS 24X7||
+8;Al Jazeera HD;News;US;English;https://www.youtube.com/watch?v=1YnlX4CkPDY;https://yt3.ggpht.com/-8IFpTckNBOQ/AAAAAAAAAAI/AAAAAAAAAAA/D3as0FRtFfo/s88-c-k-no-mo-rj-c0xffffff/photo.jpg;;Al Jazeera HD||
+9;Sky News HD;News;UK;English;https://www.youtube.com/watch?v=y60wDzZt8yg;https://yt3.ggpht.com/-uYnyeu0wFpQ/AAAAAAAAAAI/AAAAAAAAAAA/VU2Ct3J_ZQw/s88-c-k-no-mo-rj-c0xffffff/photo.jpg;;Sky News||
+10;Khon2 HD;News;US;English;http://livestream.com/accounts/1858266/events/1647828;http://i.imgur.com/hAtVwOJ.png;;Khon2||
+11;Fox 5 Washington DC;News;US;English;http://livestream.com/accounts/7240537/events/2778976;http://static.lakana.com/lakana-fox-global/theme/images/wttg/placeholder-square.jpg;;Fox 5 Washington DC
