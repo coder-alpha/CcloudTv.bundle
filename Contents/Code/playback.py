@@ -1,19 +1,3 @@
-import transcoder, common, common_fnc, livestreamer_fnc
-import os, sys, re, time
-
-# clients that dont require rtmp transcoding
-RTMP_TRANSCODE_CLIENTS = ['Plex Web']
-
-MP4_VIDEOS = ['googlevideo.com','googleusercontent.com','blogspot.com']
-INCOMPATIBLE_URL_SERVICES = ['stream.mslive.in','stream.north.kz','stream.sportstv.com.tr','www.youtube.com','stream.canalsavoir.tv']
-
-try:
-	res_folder_path = os.getcwd().split("?\\")[1].split('Plug-in Support')[0]+"Plug-ins/CcloudTv.bundle/Contents/Resources/"
-except:
-	res_folder_path = os.getcwd().split("Plug-in Support")[0]+"Plug-ins/CcloudTv.bundle/Contents/Resources/"
-if res_folder_path not in sys.path:
-	sys.path.append(res_folder_path)
-
 # Adapted from
 #
 # IPTV (Author: Cigaras)
@@ -34,9 +18,32 @@ if res_folder_path not in sys.path:
 
 # Version 1.0.10
 #
+import transcoder, common, common_fnc, livestreamer_fnc
+import os, sys, re, time, urllib2, urlparse
+
+# clients that dont require rtmp transcoding
+RTMP_TRANSCODE_CLIENTS = ['Plex Web']
+
+MP4_VIDEOS = ['googlevideo.com','googleusercontent.com','blogspot.com']
+INCOMPATIBLE_URL_SERVICES = ['stream.mslive.in','stream.north.kz','stream.sportstv.com.tr','www.youtube.com','stream.canalsavoir.tv']
+COMPATIBLE_URL_SERVICES = ['167.114.102.27']
+
+try:
+	res_folder_path = os.getcwd().split("?\\")[1].split('Plug-in Support')[0]+"Plug-ins/CcloudTv.bundle/Contents/Resources/"
+except:
+	res_folder_path = os.getcwd().split("Plug-in Support")[0]+"Plug-ins/CcloudTv.bundle/Contents/Resources/"
+if res_folder_path not in sys.path:
+	sys.path.append(res_folder_path)
+	
+URL_CACHE = {}
+	
 ####################################################################################################
 @route(common.PREFIX + '/createvideoclipobject', allow_sync=True)
 def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False, dontUseURLServ=False, rating=None, content_rating=None, duration=None, studio=None, year=None, genres=None, actors=None, writers=None, directors=None):
+
+	if '.m3u8' in url and inc_container == False and GetUrlCacheStatus(url):
+		URL_CACHE.clear()
+		Thread.Create(GetAndPopUrl, {}, url)
 	
 	if rating != None:
 		rating = float(rating)
@@ -70,16 +77,17 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 		
 	vco = ''
 	
-	is_streamlink = livestreamer_fnc.CheckLivestreamer(url=url)
-	if not inc_container and is_streamlink:
-		vco = livestreamer_fnc.Qualities(title=title, url=url, summary=summary, thumb=thumb, art=thumb, is_streamlink=is_streamlink)
-		if vco != None:
-			if Prefs['debug']:
-				Log("Using Livestreamer API")
-			return vco
-		else:
-			if Prefs['debug']:
-				Log("Not Using Livestreamer API")
+	if inc_container == False and '.m3u8' not in url:
+		is_streamlink = livestreamer_fnc.CheckLivestreamer(url=url)
+		if is_streamlink:
+			vco = livestreamer_fnc.Qualities(title=title, url=url, summary=summary, thumb=thumb, art=thumb, is_streamlink=is_streamlink)
+			if vco != None:
+				if Prefs['debug']:
+					Log("Using Livestreamer API")
+				return vco
+			else:
+				if Prefs['debug']:
+					Log("Not Using Livestreamer API")
 	
 	if '.mp3' in url or '.aac' in url or 'mmsh:' in url:
 		container = Container.MP4
@@ -111,7 +119,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 		)
 	elif '.mp4' in url and '.m3u8' not in url and url.startswith('http'):
 		# we will base64 encode the url, so that any conflicting url service does not interfere
-		vco = MovieObject(
+		vco = VideoClipObject(
 			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb, "rating": rating, "duration": duration, "content_rating": content_rating, "studio": studio, "year": year, "genres": genres, "writers": writers, "directors": directors, "roles": actors}))),
 			title = title,
 			thumb = thumb,
@@ -125,7 +133,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 		)
 	elif common_fnc.ArrayItemsInString(MP4_VIDEOS, url) and '.m3u8' not in url and url.startswith('http'):
 		# we will base64 encode the url, so that any conflicting url service does not interfere
-		vco = MovieObject(
+		vco = VideoClipObject(
 			url = "ccloudtv://" + E(JSON.StringFromObject(({"url":url, "title": title, "summary": summary, "thumb": thumb, "rating": rating, "duration": duration, "content_rating": content_rating, "studio": studio, "year": year, "genres": genres, "writers": writers, "directors": directors, "roles": actors}))),
 			title = title,
 			thumb = thumb,
@@ -178,7 +186,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 		)
 	else:
 		url_serv = None
-		if not dontUseURLServ and not common_fnc.ArrayItemsInString(INCOMPATIBLE_URL_SERVICES, url):
+		if not dontUseURLServ and common_fnc.ArrayItemsInString(COMPATIBLE_URL_SERVICES, url) and not common_fnc.ArrayItemsInString(INCOMPATIBLE_URL_SERVICES, url):
 			if Prefs['debug']:
 				Log("Finding URLService for " + url)
 			url_serv = URLService.ServiceIdentifierForURL(url)
@@ -196,36 +204,55 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 				thumb = thumb
 			)
 		else:
-			parts = []
-			rangeX = 1
-			if url.endswith('.ts') and inc_container: # for .ts segments add them as parts to have continuos playback
-				rangeX = 1000
-			for x in range(0,rangeX):
-				po = PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container))
-				parts.append(po)
+			if url.endswith('.ts') and inc_container:
+				parts = []
+				rangeX = rangeX = 1000
+				for x in range(0,rangeX):
+					po = PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container), duration = 86400000)
+					parts.append(po)
+					
+				vco = VideoClipObject(
+					key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
+					rating_key = title,
+					#url = url,
+					title = title,
+					summary = summary,
+					thumb = thumb,
+					items = [
+						MediaObject(
+							#container = Container.MP4,	 # MP4, MKV, MOV, AVI
+							#video_codec = VideoCodec.H264, # H264
+							#audio_codec = AudioCodec.AAC,  # ACC, MP3
+							#audio_channels = 2,			# 2, 6
+							#container = container,
+							#audio_codec = audio_codec,
+							parts = parts,
+							optimized_for_streaming = Prefs["optimized_for_streaming"]
+						)
+					]
+				)
+			else:
+				vco = VideoClipObject(
+					key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
+					rating_key = title,
+					#url = url,
+					title = title,
+					summary = summary,
+					thumb = thumb,
+					items = [
+						MediaObject(
+							#container = Container.MP4,	 # MP4, MKV, MOV, AVI
+							#video_codec = VideoCodec.H264, # H264
+							#audio_codec = AudioCodec.AAC,  # ACC, MP3
+							#audio_channels = 2,			# 2, 6
+							#container = container,
+							#audio_codec = audio_codec,
+							parts = [PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container), duration = 86400000)],
+							optimized_for_streaming = Prefs["optimized_for_streaming"]
+						)
+					]
+				)
 				
-			vco = VideoClipObject(
-				key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
-				rating_key = url,
-				#url = url,
-				title = title,
-				summary = summary,
-				thumb = thumb,
-				rating = rating,
-				duration = duration,
-				items = [
-					MediaObject(
-						#container = Container.MP4,	 # MP4, MKV, MOV, AVI
-						#video_codec = VideoCodec.H264, # H264
-						#audio_codec = AudioCodec.AAC,  # ACC, MP3
-						#audio_channels = 2,			# 2, 6
-						#container = container,
-						#audio_codec = audio_codec,
-						parts = parts,
-						optimized_for_streaming = True
-					)
-				]
-			)
 
 	if inc_container:
 		return ObjectContainer(objects = [vco])
@@ -262,8 +289,11 @@ def GetVideoURL(url, live, transcode, finalPlay, **kwargs):
 	else:
 		if transcode and finalPlay:
 			time.sleep(10) # give some delay for transcoding to begin - remember output m3u8 is not instant
+			
+		if transcode:
+			return HTTPLiveStreamURL(url=url)
 
-		return HTTPLiveStreamURL(url = url)
+		return HTTPLiveStreamURL(url = GetMyRedUrl(url, finalPlay))
 
 ####################################################################################################
 @indirect
@@ -272,5 +302,67 @@ def PlayVideoLive(url):
 	return HTTPLiveStreamURL(url=url)
 	#return Redirect(url)
 	#return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)
-
 	
+def GetAndPopUrl(url):
+	if Prefs["debug"]:
+		Log("GetAndPopUrl Thread for %s" % url)
+	URL_CACHE['Alive-%s' % E(url)] = True
+	redurl = GetRedirect(url, 5)
+	if redurl == None:
+		redurl = GetRedirect(url, 8, url)
+	if redurl == None:
+		redurl = url
+	URL_CACHE[url] = redurl
+	URL_CACHE['ts'] = time.time()
+	URL_CACHE['Alive-%s' % E(url)] = False
+
+def GetMyRedUrl(url, finalPlay):
+	if url in URL_CACHE:
+		url = URL_CACHE[url]
+	elif finalPlay and ('Alive-%s' % E(url)) in URL_CACHE and URL_CACHE['Alive-%s' % E(url)] == True:
+		time.sleep(0.5)
+	return url
+	
+def GetUrlCacheStatus(url):
+	key = 'Alive-%s' % E(url)
+	if (key not in URL_CACHE) or (key in URL_CACHE and URL_CACHE[key] == False and int(time.time())-int(URL_CACHE['ts']) > 1000):
+		return True
+	else:
+		return False
+
+def GetRedirect(url, timeout, ref=None):
+	class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
+		def redirect_request(self, req, fp, code, msg, headers, newurl):
+			newreq = urllib2.HTTPRedirectHandler.redirect_request(self,
+				req, fp, code, msg, headers, newurl)
+			if newreq is not None:
+				self.redirections.append(newreq.get_full_url())
+			return newreq
+	
+	redirectHandler = HTTPRedirectHandler()
+	redirectHandler.max_redirections = 10
+	redirectHandler.redirections = []
+
+	opener = urllib2.build_opener(redirectHandler)
+	opener = urllib2.install_opener(opener)
+	
+	headers = {}
+	headers['User-Agent'] = common.USER_AGENT
+	
+	if ref != None:
+		headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
+
+	request = urllib2.Request(url, headers=headers)
+
+	try:
+		response = urllib2.urlopen(request, timeout=int(timeout))
+		for redURL in redirectHandler.redirections:
+			#urlList.append(redURL) # make a list, might be useful
+			url = redURL
+			if Prefs["debug"]:
+				Log("Redirect: %s" % url)
+		return url
+	except urllib2.HTTPError as response:
+		Log('URL: %s' % url)
+		Log('Error: %s' % response)
+		return None

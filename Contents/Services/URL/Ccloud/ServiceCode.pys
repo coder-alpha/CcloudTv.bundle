@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 USER_AGENT = 'Mozilla5.0'
 
@@ -15,56 +16,73 @@ def MetadataObjectForURL(url):
 	title = data['title']
 	summary = data['summary']
 	thumb = data['thumb']
-	content_rating = data['content_rating']
-	if content_rating == "None":
+	try:
+		content_rating = data['content_rating']
+		if content_rating == "None":
+			content_rating = None
+	except:
 		content_rating = None
 	
-	year = data['year']
-	if year == "None":
-		year = None
-	else:
+	try:
+		year = data['year']
 		year = int(year)
+	except:
+		year = None
 		
-	studio = data['studio']
-	if studio == "None":
+	try:
+		studio = data['studio']
+		if studio == "None":
+			studio = None
+	except:
 		studio = None
-		
-	genres_a = []
-	genres = data['genres']
-	for g in genres.split(','):
-		if g != '':
-			genres_a.append(g.strip())
-		
-	writers_a = []
-	writers = data['writers']
-	for w in writers.split(','):
-		if w != '':
-			writers_a.append({'name': w.strip()})
-		
-	directors_a = []
-	directors = data['directors']
-	for d in directors.split(','):
-		if d != '':
-			directors_a.append({'name': d.strip()})
-		
-	roles_a = []
-	roles = data['roles']
-	for r in roles.split(','):
-		if r != '':
-			roles_a.append({'name': r.strip()})
-
 	
-	if data['rating'] != "None":
+	try:
+		genres_a = []
+		genres = data['genres']
+		for g in genres.split(','):
+			if g != '':
+				genres_a.append(g.strip())
+	except:
+		genres_a = []
+		
+	try:
+		writers_a = []
+		writers = data['writers']
+		for w in writers.split(','):
+			if w != '':
+				writers_a.append({'name': w.strip()})
+	except:
+		writers_a = []
+	
+	try:
+		directors_a = []
+		directors = data['directors']
+		for d in directors.split(','):
+			if d != '':
+				directors_a.append({'name': d.strip()})
+	except:
+		directors_a = []
+		
+	try:
+		roles_a = []
+		roles = data['roles']
+		for r in roles.split(','):
+			if r != '':
+				roles_a.append({'name': r.strip()})
+	except:
+		roles_a = []
+	
+	try:
 		rating = float(data['rating'])
-	else:
+	except:
 		rating = None
 		
-	if data['duration'] != "None":
+	try:
 		duration = int(data['duration'])
-	else:
-		duration = None
+	except:
+		duration = 86400000
 		
-	return VideoClipObject(
+	return MovieObject(
 		title = title,
 		url = furl,
 		summary = summary,
@@ -102,10 +120,11 @@ def MediaObjectsForURL(url):
 			MediaObject(
 				protocol = 'hls',
                 container = 'mpegts',
+				video_codec = VideoCodec.H264,
 				audio_codec = AudioCodec.AAC,
 				audio_channels = 2,
 				optimized_for_streaming = True,
-				parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+				parts = [PartObject(key=Callback(PlayVideo, url=furl, ext='m3u8'))]
 			)
 		]
 	else:
@@ -122,7 +141,7 @@ def MediaObjectsForURL(url):
 
 ####################################################################################################
 @indirect
-def PlayVideo(url):
+def PlayVideo(url, **kwargs):
 	http_headers = {'User-Agent': USER_AGENT}
 	if '.m3u8' in url:
 		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers)

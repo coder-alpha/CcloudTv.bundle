@@ -697,7 +697,9 @@ def RefreshListing(doRefresh, additionalURL=None):
 					abortBool = False
 					if doRefresh:
 						# Expire the Cache in 5 mins (the frequency at which cCloud updates its listing)
-						Thread.Create(ExpireCacheIn,{},5*60)
+						# Dont Expire Cache when using Private list mode
+						if Prefs["private_mode"] == False:
+							Thread.Create(ExpireCacheIn,{},5*60)
 					
 						return ObjectContainer(header='Refresh Successful', message= str(int(ch_count_array[0])) + ' cCloud Channels retrieved !', title1='Refresh Successful')
 				except Exception, e:
@@ -712,7 +714,9 @@ def RefreshListing(doRefresh, additionalURL=None):
 		return ObjectContainer(header='Refresh Failed', message='Channel listing could not be retrieved !', title1='Refresh Failed')
 
 	# Expire the Cache in 5 mins (the frequency at which cCloud updates its listing)
-	Thread.Create(ExpireCacheIn,{},5*60)
+	# Dont Expire Cache when using Private list mode
+	if Prefs["private_mode"] == False:
+		Thread.Create(ExpireCacheIn,{},5*60)
 	return abortBool
 	
 
@@ -1897,54 +1901,54 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	isMovie = isChannelAMovie(url, genre)
 	
 	if (listingUrl <> None and listingUrl != 'Unknown' and not Prefs['use_epg']) or isMovie:
-		#try:
-		tvGuide = guide_online.GetListing(epgChID, url, listingUrl, country, lang, isMovie=isMovie)
-		if tvGuide == None:
-			tvGuide = []
-			if isMovie:
-				tvGuideSum = 'IMDb option not Enabled or Movie info Not Found'
+		try:
+			tvGuide = guide_online.GetListing(epgChID, url, listingUrl, country, lang, isMovie=isMovie)
+			if tvGuide == None:
+				tvGuide = []
+				if isMovie:
+					tvGuideSum = 'IMDb option not Enabled or Movie info Not Found'
+				else:
+					tvGuideSum = 'EPG Not Enabled'
 			else:
-				tvGuideSum = 'EPG Not Enabled'
-		else:
-			use_guide_button = True
-			
-		l = len(tvGuide)
-		sep = ' | '
-		if l > 0:
-			if not isMovie:
-				tvGuideCurr = unicode(' : ' + tvGuide[0]['showtitles'])
-			else:
-				sep = ' \n'
-				try:
-					if common_fnc.GetHttpStatus(logoUrl) not in common_fnc.GOOD_RESPONSE_CODES:
-						logoUrl = tvGuide[0]['img']
-				except:
-					pass
-		for x in xrange(l):
-			if tvGuide[x]['showtitles'] == 'Certification':
-				content_rating = tvGuide[x]['showtimes'].strip('USA:')
-				if tvGuide[x]['showtimes'] == 'USA:R' and not Prefs['show_adult'] and Dict['AccessPin'+session] != Prefs['access_pin']:
-					return ObjectContainer(header=title, message=title + ' has a R certification and not available based on your access rights !', title1='Access Control')
-			if tvGuide[x]['showtitles'] == 'Rating':
-				rating = float(tvGuide[x]['showtimes'].strip('/10').strip())
-			if tvGuide[x]['showtitles'] == 'Runtime':
-				duration = int(tvGuide[x]['showtimes'].strip('mins.').strip())*60*1000
-			if tvGuide[x]['showtitles'] == 'Year':
-				year = tvGuide[x]['showtimes']
-			if tvGuide[x]['showtitles'] == 'Distributors':
-				studio = tvGuide[x]['showtimes']
-			if tvGuide[x]['showtitles'] == 'Cast':
-				actors = tvGuide[x]['showtimes'] + ','
-			if tvGuide[x]['showtitles'] == 'Directors':
-				directors = tvGuide[x]['showtimes'] + ','
-			if tvGuide[x]['showtitles'] == 'Writers':
-				writers = tvGuide[x]['showtimes'] + ','
-			if tvGuide[x]['showtitles'] == 'Genres':
-				genres = tvGuide[x]['showtimes'] + ','
+				use_guide_button = True
 				
-			tvGuideSum += sep + tvGuide[x]['showtitles'] + ' : ' + tvGuide[x]['showtimes']
-		#except:
-		#	pass
+			l = len(tvGuide)
+			sep = ' | '
+			if l > 0:
+				if not isMovie:
+					tvGuideCurr = unicode(' : ' + tvGuide[0]['showtitles'])
+				else:
+					sep = ' \n'
+					try:
+						if common_fnc.GetHttpStatus(logoUrl) not in common_fnc.GOOD_RESPONSE_CODES:
+							logoUrl = tvGuide[0]['img']
+					except:
+						pass
+			for x in xrange(l):
+				if tvGuide[x]['showtitles'] == 'Certification':
+					content_rating = tvGuide[x]['showtimes'].strip('USA:')
+					if tvGuide[x]['showtimes'] == 'USA:R' and not Prefs['show_adult'] and Dict['AccessPin'+session] != Prefs['access_pin']:
+						return ObjectContainer(header=title, message=title + ' has a R certification and not available based on your access rights !', title1='Access Control')
+				if tvGuide[x]['showtitles'] == 'Rating':
+					rating = float(tvGuide[x]['showtimes'].strip('/10').strip())
+				if tvGuide[x]['showtitles'] == 'Runtime':
+					duration = int(tvGuide[x]['showtimes'].strip('mins.').strip())*60*1000
+				if tvGuide[x]['showtitles'] == 'Year':
+					year = tvGuide[x]['showtimes']
+				if tvGuide[x]['showtitles'] == 'Distributors':
+					studio = tvGuide[x]['showtimes']
+				if tvGuide[x]['showtitles'] == 'Cast':
+					actors = tvGuide[x]['showtimes'] + ','
+				if tvGuide[x]['showtitles'] == 'Directors':
+					directors = tvGuide[x]['showtimes'] + ','
+				if tvGuide[x]['showtitles'] == 'Writers':
+					writers = tvGuide[x]['showtimes'] + ','
+				if tvGuide[x]['showtitles'] == 'Genres':
+					genres = tvGuide[x]['showtimes'] + ','
+					
+				tvGuideSum += sep + tvGuide[x]['showtitles'] + ' : ' + tvGuide[x]['showtimes']
+		except:
+			pass
 	elif Prefs['use_epg'] and Dict['xmlTvParserThreadAlive'] == 'False' and Dict['xmlTvParserStatus'] == 'False':
 		tvGuideSum = 'Guide downloading or parsing caused an error. Please refer log file.'
 	elif Prefs['use_epg']:
@@ -1962,13 +1966,23 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 	try:
 		if not url.endswith('.ts'):
 			url = common_fnc.GetRedirector(url)
-		thumb = GetChannelThumb(url,logoUrl)
+	except:
+		pass
+	try:
+		if Prefs["test_chs"]:
+			thumb = GetChannelThumb(url,logoUrl)
+		else:
+			thumb = logoUrl
 	except:
 		pass
 		
-	#try:
-	#Log("----------- url ----------------")
-	#Log(url)
+	if thumb and thumb.startswith('http'):
+		thumb = thumb
+	elif thumb and thumb != '':
+		thumb = R(thumb)
+	else:
+		thumb = R(ICON_SERIES)
+		
 	if 'rtmp:' in url or 'rtmpe:' in url:
 		rtmpVid = ' (rtmp) '
 	
@@ -1991,11 +2005,8 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 		actors = actors,
 		writers = writers,
 		directors = directors,
-		genres = genres[0:len(genres)-1],
+		genres = genres,
 		duration = duration))
-
-	#except:
-	#	url = ""
 
 	if not isMovie and use_guide_button:
 		oc.add(DirectoryObject(
@@ -2058,7 +2069,7 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 			thumb = R(ICON_PIN)
 		))
 		
-	if sharable == 'True' and thumb != R(ICON_SERIES_UNAV) and not CheckPlexShare(url):
+	if sharable == 'True' and thumb != (ICON_SERIES_UNAV) and not CheckPlexShare(url):
 		fixedChTitle = FixTitle(title, engonly=True, sharable=True)
 		
 		oc.add(DirectoryObject(
@@ -2085,29 +2096,23 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 def GetChannelThumb(url, logoUrl):
 
 	#Log('Thumb1:' + logoUrl)
-	thumb = R(ICON_SERIES_UNAV)
+	thumb = (ICON_SERIES_UNAV)
 	try:
 		if 'http' not in logoUrl:
-			logoUrl = R(ICON_SERIES)
+			logoUrl = (ICON_SERIES)
 		if '.m3u8' in url and not livestreamer_fnc.CheckLivestreamer(url=url):
 			try:
-				Thread.Create(TimeoutChecker)
-				page = HTTP.Request(url, timeout = float(common_fnc.global_request_timeout)).content
+				#Thread.Create(TimeoutChecker)
+				page = HTTP.Request(url, timeout = float(10)).content
+				if page != None and 'html' not in page and 'div' not in page and '#EXTM3U' in page:
+					thumb = logoUrl
 			except:
-				thumb = R(ICON_UNKNOWN)
-
-			if Dict['Timeout'] <> None and int(Dict['Timeout']) > common_fnc.global_request_timeout:
-				if Prefs['debug']:
-					Log('GetChannelThumb : Timeout = ' + Dict['Timeout'])
-				thumb = R(ICON_UNKNOWN)
-			del TIMEOUT_BOOL[:]
-			if page <> None and 'html' not in page and 'div' not in page and '#EXTM3U' in page:
-				thumb = logoUrl
+				thumb = (ICON_UNKNOWN)
 		elif 'rtmp:' in url:
 			if Prefs['use_transcoder'] and common_fnc.getProduct() in playback.RTMP_TRANSCODE_CLIENTS:
 				thumb = logoUrl
 			elif (not Prefs['use_transcoder'] or len(Prefs['transcode_prog']) == 0) and common_fnc.getProduct() not in playback.RTMP_TRANSCODE_CLIENTS:
-				thumb = R(ICON_UNKNOWN)
+				thumb = (ICON_UNKNOWN)
 			else:
 				thumb = logoUrl
 		elif '.m3u' in url:
@@ -2115,7 +2120,7 @@ def GetChannelThumb(url, logoUrl):
 		elif '.aac' in url or '.mp3' in url:
 			thumb = logoUrl
 		elif 'mmsh:' in url or 'rtsp:' in url:
-			thumb = R(ICON_UNKNOWN)
+			thumb = (ICON_UNKNOWN)
 		elif url.endswith('.ts'):
 			thumb = logoUrl
 		elif '.mp4' in url or common_fnc.ArrayItemsInString(playback.MP4_VIDEOS, url):
@@ -2128,7 +2133,7 @@ def GetChannelThumb(url, logoUrl):
 			if resp in common_fnc.GOOD_RESPONSE_CODES:
 				thumb = logoUrl
 	except:
-		thumb = R(ICON_SERIES_UNAV)
+		thumb = (ICON_SERIES_UNAV)
 		
 	#Log('Thumb:' + str(thumb))
 
