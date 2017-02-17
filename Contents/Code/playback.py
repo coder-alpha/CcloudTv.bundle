@@ -325,7 +325,7 @@ def GetMyRedUrl(url, finalPlay):
 	
 def GetUrlCacheStatus(url):
 	key = 'Alive-%s' % E(url)
-	if (key not in URL_CACHE) or (key in URL_CACHE and URL_CACHE[key] == False and int(time.time())-int(URL_CACHE['ts']) > 1000):
+	if (key not in URL_CACHE) or (key in URL_CACHE and URL_CACHE[key] == False and int(time.time())-int(URL_CACHE['ts']) > 100):
 		return True
 	else:
 		return False
