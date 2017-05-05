@@ -39,7 +39,7 @@ URL_CACHE = {}
 	
 ####################################################################################################
 @route(common.PREFIX + '/createvideoclipobject', allow_sync=True)
-def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False, dontUseURLServ=False, rating=None, content_rating=None, duration=None, studio=None, year=None, genres=None, actors=None, writers=None, directors=None):
+def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False, dontUseURLServ=False, rating=None, content_rating=None, duration=None, studio=None, year=None, genres=None, actors=None, writers=None, directors=None, **kwargs):
 
 	if '.m3u8' in url and inc_container == False and GetUrlCacheStatus(url):
 		URL_CACHE.clear()
@@ -297,7 +297,7 @@ def GetVideoURL(url, live, transcode, finalPlay, **kwargs):
 
 ####################################################################################################
 @indirect
-def PlayVideoLive(url):
+def PlayVideoLive(url, **kwargs):
 
 	return HTTPLiveStreamURL(url=url)
 	#return Redirect(url)
