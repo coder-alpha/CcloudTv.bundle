@@ -8,4 +8,4 @@
 8;Al Jazeera HD;News;US;English;https://www.youtube.com/watch?v=1YnlX4CkPDY;https://yt3.ggpht.com/-8IFpTckNBOQ/AAAAAAAAAAI/AAAAAAAAAAA/D3as0FRtFfo/s88-c-k-no-mo-rj-c0xffffff/photo.jpg;;Al Jazeera HD||
 9;Sky News HD;News;UK;English;https://www.youtube.com/watch?v=y60wDzZt8yg;https://yt3.ggpht.com/-uYnyeu0wFpQ/AAAAAAAAAAI/AAAAAAAAAAA/VU2Ct3J_ZQw/s88-c-k-no-mo-rj-c0xffffff/photo.jpg;;Sky News||
 10;Khon2 HD;News;US;English;http://livestream.com/accounts/1858266/events/1647828;http://i.imgur.com/hAtVwOJ.png;;Khon2||
-11;Fox 5 Washington DC;News;US;English;http://livestream.com/accounts/7240537/events/2778976;http://static.lakana.com/lakana-fox-global/theme/images/wttg/placeholder-square.jpg;;Fox 5 Washington DC
+11;RTMP Test;Test;US;English;rtmp://srvvenus.canaldoboi.com/livecb/livestream;http://simxperience.com/Portals/0/EasyDNNnews/2/beta.jpg;;RTMP Test

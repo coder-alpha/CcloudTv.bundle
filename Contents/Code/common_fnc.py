@@ -8,7 +8,7 @@ GOOD_RESPONSE_CODES = ['200','206']
 ####################################################################################################
 # Get HTTP response code (200 == good)
 @route(common.PREFIX + '/gethttpstatus')
-def GetHttpStatus(url):
+def GetHttpStatus(url, timeout=global_request_timeout):
 	try:
 		headers = {'User-Agent': common.USER_AGENT,
 		   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -31,7 +31,7 @@ def GetHttpStatus(url):
 
 		if 'http://' in url or 'https://' in url:
 			req = urllib2.Request(url, headers=headers)
-			conn = urllib2.urlopen(req, timeout=global_request_timeout)
+			conn = urllib2.urlopen(req, timeout=timeout)
 			resp = str(conn.getcode())
 		else:
 			resp = '200'
@@ -46,9 +46,9 @@ def GetHttpStatus(url):
 ####################################################################################################
 # Get HTTP response code (200 == good)
 @route(common.PREFIX + '/followredirectgethttpstatus')
-def FollowRedirectGetHttpStatus(url):
+def FollowRedirectGetHttpStatus(url, timeout=global_request_timeout):
 	try:
-		response = redirect_follower.GetRedirect(url,global_request_timeout)
+		response = redirect_follower.GetRedirect(url,timeout)
 		if response <> None:
 			resp = str(response.getcode())
 	except Exception as e:
@@ -84,13 +84,13 @@ def GetRedirectingUrl(url):
 	#Log("Url ----- : " + url)
 	redirectUrl = url
 	try:
-		response = redirect_follower.GetRedirect(url, global_request_timeout)
+		response = redirect_follower.GetRedirect(url, 7)
 		if response <> None:
 			return response.geturl()
 	except:
 		redirectUrl = url
 			
-	#Log("Redirecting url ----- : " + redirectUrl)
+	Log("Redirecting url ----- : " + redirectUrl)
 	return redirectUrl
 	
 ####################################################################################################

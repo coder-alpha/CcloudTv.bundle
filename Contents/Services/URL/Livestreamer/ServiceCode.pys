@@ -15,10 +15,10 @@ def MetadataObjectForURL(url):
 	title, summary, url, thumb, art = Regex(r'^title\=(.+)\,summary\=(.*)\,url\=(.*)\,thumb\=(.*)\,art\=(.*)$').search(slist[0]).groups()
 	summary = JSON.ObjectFromString(D(summary))
 	
-	return VideoClipObject(
+	return MovieObject(
 		title=title,
 		summary=summary,
-		thumb=thumb if thumb else None,
+		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'), #thumb if thumb else None,
 		art=art if art else None
 	)
 

@@ -44,16 +44,19 @@ def get_latest_version():
 
 ################################################################################
 def update_available():
-	latest_version_str, summ, tag = get_latest_version()
-	latest_version_str = getOnlyVersionNumber(latest_version_str)
-	
-	if latest_version_str:
-		#latest_version  = map(int, latest_version_str.split('.'))
-		#current_version = map(int, common.VERSION.split('.'))
-		latest_version  = latest_version_str
-		current_version = common.VERSION
-		return (float(latest_version) > float(current_version), latest_version_str, summ, tag)
-	return (False, None, None, None)
+	try:
+		latest_version_str, summ, tag = get_latest_version()
+		latest_version_str = getOnlyVersionNumber(latest_version_str)
+		
+		if latest_version_str:
+			#latest_version  = map(int, latest_version_str.split('.'))
+			#current_version = map(int, common.VERSION.split('.'))
+			latest_version  = latest_version_str
+			current_version = common.VERSION
+			return (float(latest_version) > float(current_version), latest_version_str, summ, tag)
+		return (False, None, None, None)
+	except:
+		return (False, None, None, None)
 
 ################################################################################
 @route(common.PREFIX + '/update')
