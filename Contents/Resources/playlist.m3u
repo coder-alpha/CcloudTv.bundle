@@ -3,35 +3,66 @@
 
 #EXTINF:0,[COLOR yellow][B]== TEST CHANNELS==[/B][/COLOR]
 
-#EXTINF:-1 tvg-id="NDTV 24x7" tvg-name="NDTV 24x7" tvg-language="English" tvg-country="IN" tvg-logo="https://pbs.twimg.com/profile_images/575304317/logo_ndtv_news_400x400.png" group-title="News",NDTV 24x7
+#EXTINF:-1 tvg-id="NDTV 24x7" tvg-name="NDTV 24x7" tvg-language="English" tvg-country="IN" tvg-logo="https://pbs.twimg.com/profile_images/575304317/logo_ndtv_news_400x400.png" group-title="News", group-logo="http://i.imgur.com/YLCjyDA.jpg", group-art="http://i.imgur.com/PxJUsF8.jpg",NDTV 24x7
 http://ndtv.live-s.cdn.bitgravity.com/cdn-live-b7/_definst_/ndtv/live/ndtv247live.smil/playlist.m3u8
+
+#EXTINF:0 tvg-id="6" tvg-name="NDTV" tvg-logo="http://i.imgur.com/r9HFgCS.jpg" group-title="News",NDTV 480p
+http://ndtv.live.cdn.bitgravity.com/ndtv/live/ndtv247live512
+
+#EXTINF:0 tvg-id="6" tvg-name="NDTV" tvg-logo="http://i.imgur.com/r9HFgCS.jpg" group-title="News",NDTV 240p
+http://bglive-a.bitgravity.com/ndtv/247hi/live/native
+
+#EXTINF:0 tvg-id="6" tvg-name="NDTV" tvg-logo="http://i.imgur.com/r9HFgCS.jpg" group-title="News",NDTV 240p
+http://ndtv.indostan.epac.to/ndtv/247lo/live/native
 
 #EXTINF:-1 tvg-id="Bloomberg" tvg-name="Bloomberg" tvg-language="English" tvg-country="US" tvg-logo="http://cdn-img.easyicon.net/png/11264/1126483.gif" group-title="News",Bloomberg
 http://cdn3.videos.bloomberg.com/btv/us/master.m3u8
 
 #EXTINF:-1 tvg-id="Nasa TV" tvg-name="Nasa TV" tvg-language="English" tvg-country="US" tvg-logo="http://cdn-img.easyicon.net/png/11264/1126483.gif" group-title="Documentary",Nasa TV
-http://nasatv-lh.akamaihd.net/i/NASA_101@319270/master.m3u8
+https://www.youtube.com/watch?v=wwMDvPCGeE0
 
 #EXTINF:-1 tvg-id="Big Buck Bunny 2008" tvg-name="Big Buck Bunny 2008" tvg-language="English" tvg-country="US" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_buck_bunny_poster_big.jpg" group-title="OnDemandMovies",Big Buck Bunny 2008
 http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4
 
-#EXTINF:-1 tvg-id="AAj Tak" tvg-name="AAj Tak" tvg-language="Hindi" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-ZE5JmiUBlGo/AAAAAAAAAAI/AAAAAAAAAAA/JU-NHnMeaY8/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",AAj Tak
-https://www.youtube.com/watch?v=E9QXO5m_iS0
-
-#EXTINF:-1 tvg-id="India Today" tvg-name="India Today" tvg-language="English" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-_D48Q-O_Q48/AAAAAAAAAAI/AAAAAAAAAAA/r31m_qnzd7k/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",India Today
-https://www.youtube.com/watch?v=nAFBhWQPMU8
-
-#EXTINF:-1 tvg-id="DD NEWS 24X7" tvg-name="DD NEWS 24X7" tvg-language="English" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-To2bJ5pE_qo/AAAAAAAAAAI/AAAAAAAAAAA/U5H5BPelJts/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",DD NEWS 24X7
-https://www.youtube.com/watch?v=4fV31KJo05s
-
 #EXTINF:-1 tvg-id="Al Jazeera HD" tvg-name="Al Jazeera HD" tvg-language="English" tvg-country="US" tvg-logo="https://yt3.ggpht.com/-8IFpTckNBOQ/AAAAAAAAAAI/AAAAAAAAAAA/D3as0FRtFfo/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",Al Jazeera HD
-https://www.youtube.com/watch?v=1YnlX4CkPDY
+https://www.youtube.com/watch?v=UgJtWREOXHA
 
 #EXTINF:-1 tvg-id="Sky News" tvg-name="Sky News" tvg-language="English" tvg-country="UK" tvg-logo="https://yt3.ggpht.com/-uYnyeu0wFpQ/AAAAAAAAAAI/AAAAAAAAAAA/VU2Ct3J_ZQw/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",Sky News
 https://www.youtube.com/watch?v=y60wDzZt8yg
+
+#EXTINF:-1 tvg-id="News18" tvg-name="News18" tvg-language="Hindi" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-AKivlOOZbgM/AAAAAAAAAAI/AAAAAAAAAAA/wm-EP6wlh7k/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",News18 India
+https://www.youtube.com/watch?v=gFMaxP6cHh8
+
+#EXTINF:-1 tvg-id="DD News" tvg-name="DD News" tvg-language="Hindi" tvg-country="IN" tvg-logo="https://yt3.ggpht.com/-To2bJ5pE_qo/AAAAAAAAAAI/AAAAAAAAAAA/U5H5BPelJts/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",DD News
+https://www.youtube.com/watch?v=WLKnVlZFg7k
+
+#EXTINF:-1 tvg-id="DD National" tvg-name="DD National" tvg-language="Hindi" tvg-country="IN" tvg-logo="http://www.desifree.tv/wp-content/uploads/dd-national.jpg" group-title="Entertainment",DD National
+https://www.youtube.com/watch?v=1EiAdUWJ4yg
+
+#EXTINF:-1 tvg-id="DW News" tvg-name="DW News" tvg-language="English" tvg-country="GR" tvg-logo="https://yt3.ggpht.com/-9Ir29NdKHLU/AAAAAAAAAAI/AAAAAAAAAAA/zRjtXkXQptw/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",DW News
+https://www.youtube.com/watch?v=gNosnzCaS4I
+
+#EXTINF:-1 tvg-id="France 24" tvg-name="France 24" tvg-language="English" tvg-country="GR" tvg-logo="https://yt3.ggpht.com/-Qc-MGBq90YE/AAAAAAAAAAI/AAAAAAAAAAA/AAmrwHX7No0/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="News",France 24
+https://www.youtube.com/watch?v=1Ydto3Iyzic
+
+#EXTINF:-1 tvg-id="Fashion TV" tvg-name="Fashion TV" tvg-language="English" tvg-country="US" tvg-logo="https://yt3.ggpht.com/-1PLcrYpuhT8/AAAAAAAAAAI/AAAAAAAAAAA/Sx6JJakB5Ug/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="Entertainment",Fashion TV
+https://www.youtube.com/watch?v=5LOTGK6fUUE
+
+#EXTINF:-1 tvg-id="Fashion TV (Europe)" tvg-name="Fashion TV (Europe)" tvg-language="English" tvg-country="UK" tvg-logo="https://yt3.ggpht.com/-Wq-c6HkRuZ0/AAAAAAAAAAI/AAAAAAAAAAA/-YZ3s3KkTFA/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="Entertainment",Fashion TV (Europe)
+https://www.youtube.com/watch?v=zVDUlc4mZW8
+
+#EXTINF:-1 tvg-id="Ibiza Global TV" tvg-name="Ibiza Global TV" tvg-language="English" tvg-country="US" tvg-logo="https://yt3.ggpht.com/-Mlsk9O-i790/AAAAAAAAAAI/AAAAAAAAAAA/KVjW6O5KcAg/s88-c-k-no-mo-rj-c0xffffff/photo.jpg" group-title="Entertainment",Ibiza Global TV
+https://www.youtube.com/watch?v=-vZplj-oeQE
 
 #EXTINF:-1 tvg-id="Khon2" tvg-name="Khon2" tvg-language="English" tvg-country="US" tvg-logo="http://i.imgur.com/hAtVwOJ.png" group-title="News",Khon2
 http://livestream.com/accounts/1858266/events/1647828
 
 #EXTINF:-1 tvg-id="Fox 5 Washington DC" tvg-name="Fox 5 Washington DC" tvg-language="English" tvg-country="US" tvg-logo="http://static.lakana.com/lakana-fox-global/theme/images/wttg/placeholder-square.jpg" group-title="News",Fox 5 Washington DC
 http://livestream.com/accounts/7240537/events/2778976
+
+#EXTINF:-1 tvg-id="Test" tvg-name="Test" tvg-language="English" tvg-country="US" tvg-logo="http://simxperience.com/Portals/0/EasyDNNnews/2/beta.jpg" group-title="Test",Test (rtmp)
+rtmp://srvvenus.canaldoboi.com/livecb/livestream
+
+#EXTINF:0 tvg-id="Test" tvg-name="Sky TG24" tvg-logo="http://upload.wikimedia.org/wikipedia/en/9/91/SKY_TG24.png" group-title="News",Sky TG24 (rtmp)
+rtmp://cp49989.live.edgefcs.net:1935/live/streamRM1@2564
+

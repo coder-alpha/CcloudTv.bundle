@@ -69,6 +69,7 @@ NONUPDATE_VIEW_CLIENTS = ['Android']
 
 # genre listing
 GENRE_ARRAY = []
+GENRE_ARRAY_DICT = {}
 GENRE_ADULT_FLAG = []
 
 # language listing
@@ -173,22 +174,23 @@ def MainMenu():
 		summary = 'Channels' + ChHelper2,
 		thumb = R(ICON)))
 			
-	oc.add(DirectoryObject(key = Callback(Pins, title='My Channel Pins'), title = 'My Channel Pins', summary = 'Shows Pinned Channels. Pins are based on Channel Name, Category, Language and Country including channel url. This is NOT useful when a Channel url is token based or is updated frequently. It also does not require the cCloud TV server listing to be retrieved.', thumb = R(ICON_PIN)))
+	oc.add(DirectoryObject(key = Callback(Pins, title='My Pins'), title = 'My Pins', summary = 'Shows Pinned Channels. Pins are based on Channel Name, Category, Language and Country including channel url. This is NOT useful when a Channel url is token based or is updated frequently. It also does not require the cCloud TV server listing to be retrieved.', thumb = R(ICON_PIN)))
 	
 	oc.add(DirectoryObject(key = Callback(Options, title='Device Options'), title = 'Device Options', summary = 'Device Specific Options like Access Control, Preferences Menu and Enabling DumbKeyboard', thumb = R(ICON_PREFS)))
 	
-	if updater.update_available()[0]:
-		oc.add(DirectoryObject(
-			key = Callback(updater.menu, title='Update Plugin'), 
-			title = 'Update (New Available)', 
-			summary = 'A New Update is Available',
-			thumb = R(ICON_UPDATE_NEW)))
-	else:
-		oc.add(DirectoryObject(
-			key = Callback(updater.menu, title='Update Plugin'), 
-			title = 'Update (Running Latest)', 
-			summary = 'No Update Available',
-			thumb = R(ICON_UPDATE)))
+	if VerifyAccess():
+		if updater.update_available()[0]:
+			oc.add(DirectoryObject(
+				key = Callback(updater.menu, title='Update Plugin'), 
+				title = 'Update (New Available)', 
+				summary = 'A New Update is Available',
+				thumb = R(ICON_UPDATE_NEW)))
+		else:
+			oc.add(DirectoryObject(
+				key = Callback(updater.menu, title='Update Plugin'), 
+				title = 'Update (Running Latest)', 
+				summary = 'No Update Available',
+				thumb = R(ICON_UPDATE)))
 	
 	return oc
 
@@ -562,6 +564,7 @@ def RefreshListing(doRefresh, additionalURL=None):
 					lastchannelNum = '-1'
 
 					del GENRE_ARRAY[:]
+					GENRE_ARRAY_DICT.clear()
 					del LANGUAGE_ARRAY[:]
 					del COUNTRY_ARRAY[:]
 					cCloudPageData = page_data
@@ -869,6 +872,8 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 								else:
 									if 'OnDemand' not in group:
 										group = group.title()
+								group_thumb = unicode(common_fnc.GetAttribute(line, 'group-logo').replace('"','').replace('\'',''))
+								group_art = unicode(common_fnc.GetAttribute(line, 'group-art').replace('"','').replace('\'',''))
 								
 								# if its a .mp4 file we can assume it to be not a live channel, so better categorize as 'OnDemand'
 								if isChannelAMovie(url, group) and 'OnDemand'.lower() not in group:
@@ -878,6 +883,15 @@ def ExtM3uParser(cCloudPageData, lastchannelNum, dateToday, week_ago, additional
 									pass
 								else:
 									GENRE_ARRAY.append(group)
+									
+								if group not in GENRE_ARRAY_DICT.keys():
+									GENRE_ARRAY_DICT[group] = {'group':group,'thumb':R(ICON_GENRE),'art':R(ART)}
+								
+								if group in GENRE_ARRAY_DICT.keys():
+									if group_thumb != '' and GENRE_ARRAY_DICT[group]['thumb'] == R(ICON_GENRE):
+										GENRE_ARRAY_DICT[group]['thumb'] = group_thumb
+									if group_art != '' and GENRE_ARRAY_DICT[group]['art'] == R(ART):
+										GENRE_ARRAY_DICT[group]['art'] = group_art
 								
 								epgLink = unicode(common_fnc.GetAttribute(line, 'epgLink'))
 								if epgLink == '':
@@ -1387,20 +1401,34 @@ def DisplayGenreMenu(title, filter1=None, filter2=None, filter3=None):
 		return ObjectContainer(header='Please wait', message='Thread Parsing Private Channels Still Running ! Please wait... ' + str(prog) + '% done.', title1 = 'Please wait')
 		
 	oc = ObjectContainer(title2=title)
+	Log(GENRE_ARRAY_DICT)
+	
 	for genre in GENRE_ARRAY:
+		if genre in GENRE_ARRAY_DICT.keys():
+			genre_thumb = GENRE_ARRAY_DICT[genre]['thumb']
+			genre_art = GENRE_ARRAY_DICT[genre]['art']
+		else:
+			genre_thumb = R(ICON_GENRE)
+			genre_art = R(ART)
 		if genre == 'Adult':
 			pass
 		elif genre == 'Top10':
-			oc.add(DirectoryObject(key = Callback(DisplayGenreLangConSort, titleGen=genre, type="Category", filter1=genre, filter2=filter2, filter3=filter3), title = ' '+genre, thumb = R(ICON_GENRE)))
+			oc.add(DirectoryObject(key = Callback(DisplayGenreLangConSort, titleGen=genre, type="Category", filter1=genre, filter2=filter2, filter3=filter3, art=genre_art), title = ' '+genre, thumb = genre_thumb, art=genre_art))
 		else:
-			oc.add(DirectoryObject(key = Callback(DisplayGenreLangConSort, titleGen=genre, type="Category", filter1=genre, filter2=filter2, filter3=filter3), title = genre, thumb = R(ICON_GENRE)))
+			oc.add(DirectoryObject(key = Callback(DisplayGenreLangConSort, titleGen=genre, type="Category", filter1=genre, filter2=filter2, filter3=filter3, art=genre_art), title = genre, thumb = genre_thumb, art=genre_art))
 	
 	oc.objects.sort(key=lambda obj: obj.title)
 	
 	session = common_fnc.getSession()
 	if (Prefs['show_adult'] or Dict['AccessPin'+session] == Prefs['access_pin']) and len(GENRE_ADULT_FLAG) > 0:
 		genre = 'Adult'
-		oc.add(DirectoryObject(key = Callback(DisplayGenreLangConSort, titleGen=genre, type="Category", filter1=genre, filter2=filter2, filter3=filter3), title = genre, thumb = R(ICON_GENRE)))
+		if genre in GENRE_ARRAY_DICT.keys():
+			genre_thumb = GENRE_ARRAY_DICT[genre]['thumb']
+			genre_art = GENRE_ARRAY_DICT[genre]['art']
+		else:
+			genre_thumb = R(ICON_GENRE)
+			genre_art = R(ART)
+		oc.add(DirectoryObject(key = Callback(DisplayGenreLangConSort, titleGen=genre, type="Category", filter1=genre, filter2=filter2, filter3=filter3, art=genre_art), title = genre, thumb = genre_thumb, art=genre_art))
 	
 	return oc
 
@@ -1455,7 +1483,7 @@ def DisplayCountryMenu(title, filter1=None, filter2=None, filter3=None):
 	return oc
 	
 @route(PREFIX + "/displaygenresort")
-def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=None):
+def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=None, art=ART):
 
 	if type == 'Country':
 		oc = ObjectContainer(title2=common.getCountryName(titleGen))
@@ -1468,7 +1496,7 @@ def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=
 		filter1=titleGen
 	else:
 		oc = ObjectContainer(title2=titleGen)
-		
+
 	abortBool = RefreshListing(False)
 	
 	if abortBool:
@@ -1558,21 +1586,23 @@ def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=
 		return ObjectContainer(header=title, message='Connection error or Server seems down !', title1 = 'Please wait')
 		
 	if type <> 'Category':
-		oc.add(DirectoryObject(key = Callback(DisplayGenreMenu, title='Category', filter1=filter1, filter2=filter2, filter3=filter3), title = 'Sort Further by Category', summary = 'Sort Further by Category within ' + titleGen, thumb = R(ICON_GENRES)))
+		oc.add(DirectoryObject(key = Callback(DisplayGenreMenu, title='Category', filter1=filter1, filter2=filter2, filter3=filter3), title = 'Sort Further by Category', summary = 'Sort Further by Category within ' + titleGen, art=art, thumb = R(ICON_GENRES)))
 	if type <> 'Language':
-		oc.add(DirectoryObject(key = Callback(DisplayLanguageMenu, title='Language', filter1=filter1, filter2=filter2, filter3=filter3), title = 'Sort Further by Language', summary = 'Sort Further by Language within ' + titleGen, thumb = R(ICON_LANGUAGES)))
+		oc.add(DirectoryObject(key = Callback(DisplayLanguageMenu, title='Language', filter1=filter1, filter2=filter2, filter3=filter3), title = 'Sort Further by Language', summary = 'Sort Further by Language within ' + titleGen, art=art, thumb = R(ICON_LANGUAGES)))
 	if type <> 'Country':
-		oc.add(DirectoryObject(key = Callback(DisplayCountryMenu, title='Country', filter1=filter1, filter2=filter2, filter3=filter3), title = 'Sort Further by Country', summary = 'Sort Further by Country within ' + titleGen, thumb = R(ICON_COUNTRIES)))
+		oc.add(DirectoryObject(key = Callback(DisplayCountryMenu, title='Country', filter1=filter1, filter2=filter2, filter3=filter3), title = 'Sort Further by Country', summary = 'Sort Further by Country within ' + titleGen, art=art, thumb = R(ICON_COUNTRIES)))
 		
 	if Prefs['use_datesort']:
 		#oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
 		if len(oc2) > 0:
 			for o in sorted(oc2, key=lambda obj: obj.title, reverse=True):
+				o.art=art
 				oc.add(o)
 	else:
 		#oc.objects.sort(key=lambda obj: obj.title)
 		if len(oc2) > 0:
 			for o in sorted(oc2, key=lambda obj: obj.title):
+				o.art=art
 				oc.add(o)
 	
 	if Client.Product in DumbKeyboard.clients or UseDumbKeyboard():
@@ -1582,9 +1612,9 @@ def DisplayGenreLangConSort(titleGen, type, filter1=None, filter2=None, filter3=
 		)
 	else:
 		if Client.Platform not in LIST_VIEW_CLIENTS:
-			oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+			oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), art=art, title='Search', summary='Search Channel', prompt='Search for...'))
 		else:
-			oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+			oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), art=art, title='Search', summary='Search Channel', prompt='Search for...'))
 		
 	Dict['LastUsed'+type] = titleGen
 	Dict.Save()
@@ -1964,7 +1994,7 @@ def ChannelPage(url, title, channelDesc, channelNum, logoUrl, country, lang, gen
 		
 	thumb = ''
 	try:
-		if not url.endswith('.ts'):
+		if common.GLOBAL_DISABLE_GetRedirector==False and not url.endswith('.ts'):
 			url = common_fnc.GetRedirector(url)
 	except:
 		pass
@@ -2128,8 +2158,8 @@ def GetChannelThumb(url, logoUrl):
 			if resp in common_fnc.GOOD_RESPONSE_CODES:
 				thumb = logoUrl
 		else:
-			resp = common_fnc.FollowRedirectGetHttpStatus(url)
-			#Log(resp)
+			resp = common_fnc.GetHttpStatus(url, timeout=7)
+			# Log(resp)
 			if resp in common_fnc.GOOD_RESPONSE_CODES:
 				thumb = logoUrl
 	except:
@@ -2636,6 +2666,8 @@ def CheckPin(url):
 @route(PREFIX + "/addpin")
 def AddPin(channelNum, url, title, channelDesc, logoUrl, country, lang, genre, sharable, epgLink, epgChID):
 	
+	if not VerifyAccess():
+		return ObjectContainer(header= 'Access Required', message='Access Required', title1='Access Required')
 	#url = common_fnc.GetRedirector(url)
 	Dict['Plex-Pin-Pin'+url] = channelNum + 'Key4Split' + title + 'Key4Split' + channelDesc + 'Key4Split' + url + 'Key4Split' + logoUrl + 'Key4Split' + country + 'Key4Split' + lang + 'Key4Split' + genre + 'Key4Split' + sharable + 'Key4Split' + epgLink + 'Key4Split' + epgChID 
 	
@@ -2649,6 +2681,9 @@ def AddPin(channelNum, url, title, channelDesc, logoUrl, country, lang, genre, s
 @route(PREFIX + "/removepins")
 def RemovePin(url):
 	
+	if not VerifyAccess():
+		return ObjectContainer(header= 'Access Required', message='Access Required', title1='Access Required')
+
 	channelNum = 'Undefined'
 	#url = common_fnc.GetRedirector(url)
 	#url = Dict[title]
@@ -2667,6 +2702,9 @@ def RemovePin(url):
 @route(PREFIX + "/clearpins")
 def ClearPins():
 
+	if not VerifyAccess():
+		return ObjectContainer(header= 'Access Required', message='Access Required', title1='Access Required')
+	
 	for each in Dict:
 		keys = Dict[each]
 		if keys <> None and 'Key4Split' in str(keys):
@@ -2832,6 +2870,9 @@ def CheckPlexShare(url):
 @route(PREFIX + "/addplexshare")
 def AddPlexShare(url, title, country, lang, genre, logoUrl, channelNum, channelDesc, sharable, epgLink, epgChID):	
 	
+	if not VerifyAccess():
+		return ObjectContainer(header= 'Access Required', message='Access Required', title1='Access Required')
+
 	if Dict['PlexShareThreadAlive'] == 'True':
 		return ObjectContainer(header='Please wait', message='Thread Plex-Share Still Running ! Please try again in a minute.', title1='Please wait')
 		
@@ -3083,7 +3124,7 @@ def FixUrl(url, test=False):
 		#par = url[n:].replace('/','%2F')
 		url = url[0:n] + par
 		#Log(url)
-	if url.endswith('.ts') and Prefs['add_tested_chs']:
+	if common.GLOBAL_DISABLE_TS_TO_M3U8_SWITCH == False and url.endswith('.ts') and Prefs['add_tested_chs']:
 		test_url = url.replace('.ts','.m3u8')
 		resp = common_fnc.GetHttpStatus(test_url)
 		if resp in common_fnc.GOOD_RESPONSE_CODES:

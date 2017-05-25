@@ -39,11 +39,11 @@ URL_CACHE = {}
 	
 ####################################################################################################
 @route(common.PREFIX + '/createvideoclipobject', allow_sync=True)
-def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False, dontUseURLServ=False, rating=None, content_rating=None, duration=None, studio=None, year=None, genres=None, actors=None, writers=None, directors=None, **kwargs):
+def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = False, transcode = False, dontUseURLServ=False, rating=None, content_rating=None, duration=None, studio=None, year=None, genres=None, actors=None, writers=None, directors=None, headers=None, **kwargs):
 
-	if '.m3u8' in url and inc_container == False and GetUrlCacheStatus(url):
-		URL_CACHE.clear()
-		Thread.Create(GetAndPopUrl, {}, url)
+	# if '.m3u8' in url and inc_container == False and GetUrlCacheStatus(url):
+		# URL_CACHE.clear()
+		# Thread.Create(GetAndPopUrl, {}, url)
 	
 	if rating != None:
 		rating = float(rating)
@@ -101,7 +101,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 			audio_codec = AudioCodec.AAC
 			
 		vco = TrackObject(
-			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
+			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration, headers=headers),
 			rating_key = url,
 			title = title,
 			thumb = thumb,
@@ -163,7 +163,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 			url = Prefs['transcode_server'] + session + '.m3u8'
 			
 		vco = VideoClipObject(
-			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, transcode=transcode, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
+			key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, transcode=transcode, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration, headers=headers),
 			#rating_key = url,
 			url = url,
 			title = title,
@@ -179,7 +179,7 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 					#audio_channels = 2,			# 2, 6
 					#container = container,
 					#audio_codec = audio_codec,
-					parts = [PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container))],
+					parts = [PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container, headers=headers))],
 					optimized_for_streaming = True
 				)
 			]
@@ -204,55 +204,26 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 				thumb = thumb
 			)
 		else:
-			if url.endswith('.ts') and inc_container:
-				parts = []
-				rangeX = rangeX = 1000
-				for x in range(0,rangeX):
-					po = PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container), duration = 86400000)
-					parts.append(po)
-					
-				vco = VideoClipObject(
-					key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
-					rating_key = title,
-					#url = url,
-					title = title,
-					summary = summary,
-					thumb = thumb,
-					items = [
-						MediaObject(
-							#container = Container.MP4,	 # MP4, MKV, MOV, AVI
-							#video_codec = VideoCodec.H264, # H264
-							#audio_codec = AudioCodec.AAC,  # ACC, MP3
-							#audio_channels = 2,			# 2, 6
-							#container = container,
-							#audio_codec = audio_codec,
-							parts = parts,
-							optimized_for_streaming = Prefs["optimized_for_streaming"]
-						)
-					]
-				)
-			else:
-				vco = VideoClipObject(
-					key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration),
-					rating_key = title,
-					#url = url,
-					title = title,
-					summary = summary,
-					thumb = thumb,
-					items = [
-						MediaObject(
-							#container = Container.MP4,	 # MP4, MKV, MOV, AVI
-							#video_codec = VideoCodec.H264, # H264
-							#audio_codec = AudioCodec.AAC,  # ACC, MP3
-							#audio_channels = 2,			# 2, 6
-							#container = container,
-							#audio_codec = audio_codec,
-							parts = [PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container), duration = 86400000)],
-							optimized_for_streaming = Prefs["optimized_for_streaming"]
-						)
-					]
-				)
-				
+			vco = VideoClipObject(
+				key = Callback(CreateVideoClipObject, url = url, title = title, thumb = thumb, summary = summary, session = session, inc_container = True, dontUseURLServ=dontUseURLServ, rating=rating, duration=duration, headers=headers),
+				rating_key = title,
+				#url = url,
+				title = title,
+				summary = summary,
+				thumb = thumb,
+				items = [
+					MediaObject(
+						#container = Container.MP4,	 # MP4, MKV, MOV, AVI
+						#video_codec = VideoCodec.H264, # H264
+						#audio_codec = AudioCodec.AAC,  # ACC, MP3
+						#audio_channels = 2,			# 2, 6
+						#container = container,
+						#audio_codec = audio_codec,
+						parts = [PartObject(key = GetVideoURL(url = url, live = True, transcode=transcode, finalPlay=inc_container, headers=headers), duration = 86400000)],
+						optimized_for_streaming = Prefs["optimized_for_streaming"]
+					)
+				]
+			)
 
 	if inc_container:
 		return ObjectContainer(objects = [vco])
@@ -260,14 +231,10 @@ def CreateVideoClipObject(url, title, thumb, summary, session, inc_container = F
 		return vco
 		
 ####################################################################################################
-def GetVideoURL(url, live, transcode, finalPlay, **kwargs):
+def GetVideoURL(url, live, transcode, finalPlay, headers, **kwargs):
 
 	#url = 'http://wpc.c1a9.edgecastcdn.net/hls-live/20C1A9/cnn/ls_satlink/b_828.m3u8?Vd?u#bt!25'
-	
-	if '.m3u' in url and '.ts' in url:
-		#return HTTPLiveStreamURL(url=url) # does not work - retrieves only single segment
-		return PlayVideoLive(url=url) # playing .ts segments as PartObjects
-	elif url.startswith('rtmp') and not transcode:
+	if url.startswith('rtmp') and not transcode and common.GLOBAL_DISABLE_RTMP==False:
 		if Prefs['debug']:
 			Log.Debug('*' * 80)
 			Log.Debug('* url before processing: %s' % url)
@@ -293,15 +260,26 @@ def GetVideoURL(url, live, transcode, finalPlay, **kwargs):
 		if transcode:
 			return HTTPLiveStreamURL(url=url)
 
-		return HTTPLiveStreamURL(url = GetMyRedUrl(url, finalPlay))
+		#return HTTPLiveStreamURL(url = GetMyRedUrl(url, finalPlay))
+		return HTTPLiveStreamURL(Callback(PlayVideoLive, url = url, headers = headers))
 
 ####################################################################################################
 @indirect
-def PlayVideoLive(url, **kwargs):
+@route(common.PREFIX + '/playvideolive.m3u8')
+def PlayVideoLive(url, headers=None):
 
-	return HTTPLiveStreamURL(url=url)
+	http_headers = {'User-Agent': common.USER_AGENT, 'Referer': url}
+	try:
+		if headers != None:
+			for h in headers.keys():
+				http_headers[h] = headers[h]
+	except:
+		pass
+	
+	#return HTTPLiveStreamURL(url=url)
 	#return Redirect(url)
 	#return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)
+	return IndirectResponse(VideoClipObject, key = url, http_headers=http_headers)
 	
 def GetAndPopUrl(url):
 	if Prefs["debug"]:
